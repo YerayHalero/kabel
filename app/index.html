@@ -131,6 +131,14 @@
   .qr-over{position:fixed;inset:0;background:#fff;color:#000;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
   .qr-over img{width:min(88vw,62vh);height:auto;image-rendering:pixelated}
   .diag{white-space:pre-wrap;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:240px;overflow:auto;margin:0}
+  .tests{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+  .tests li{display:grid;grid-template-columns:26px 1fr;gap:2px 8px;padding:13px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .tests li b{font-weight:600}
+  .tests li small{grid-column:2;color:var(--dim);font-size:13px;overflow-wrap:anywhere}
+  .tests .ok .ic{color:var(--lime)} .tests .ko .ic{color:var(--red)} .tests .run .ic{color:var(--amber)}
+  .tests .ko small{color:#FFB4A4}
+  .verdict{border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;font-size:15px}
+  .verdict.ok{border-color:var(--lime)} .verdict.ko{border-color:var(--red)}
   .qr-over p{font-size:15px;color:#555}
   .qr-over .live-n{font-size:22px;font-weight:800;color:#000;min-height:30px}
   .qr-over .live-n:empty{display:none}
@@ -171,7 +179,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.1';
+const VERSION = 'v2.2';
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
 const ICE_SERVERS = [
@@ -389,7 +397,7 @@ const Home = {
           </a>`).join('')}</div>`
         : `<p class="empty">¿Vienes a escuchar? Escanea el QR del artista con la cámara del móvil. Si lo guardas, aparecerá aquí.</p>`}
       </section>
-      <p class="foot">Prototipo ${VERSION}. No guardamos música, sesiones ni datos de oyentes. <a href="../">Qué es Kabel</a></p>
+      <p class="foot">Prototipo ${VERSION}. No guardamos música, sesiones ni datos de oyentes. <a href="../">Qué es Kabel</a> · <a href="#test">Probar mi conexión</a></p>
     </div>`;
     if (list.length) this.probe(list);
   },
@@ -491,7 +499,7 @@ const Console = {
     <div class="wrap">
       <header class="who">
         <span class="mono sm">${esc(initial(a.name))}</span>
-        <div class="who-t"><b>${esc(a.name)}</b><small>Tu código: ${esc(a.code)}</small></div>
+        <div class="who-t"><b>${esc(a.name)}</b><small>Tu código: ${esc(a.code)} · ${VERSION}</small></div>
         <button class="link" id="c-edit" type="button">Editar</button>
       </header>
 
@@ -539,7 +547,7 @@ const Console = {
       </div></details>
 
       ${diagHTML()}
-
+      <a class="link" href="#test" style="align-self:flex-start;padding-left:0">Probar mi conexión</a>
       <a class="link" href="./" style="align-self:flex-start;padding-left:0">Salir de la consola</a>
     </div>`;
 
@@ -835,7 +843,7 @@ window.addEventListener('beforeunload', e => { if (Console.live){ e.preventDefau
 // =========================================================================
 const Listener = {
   code:'', pid:'', profile:null, status:'checking', peer:null, conn:null, call:null,
-  pending:false, tries:0, toT:0, want:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, statsT:0, techOpen:false, last:null,
+  reason:'', pending:false, tries:0, toT:0, want:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, statsT:0, techOpen:false, last:null,
   audio:null, n:0, now:'', lastSent:0, shareMsg:'',
 
   start(code){
@@ -845,14 +853,14 @@ const Listener = {
     document.body.appendChild(this.audio);
     if (load(LS.awake, null) === null) store(LS.awake, true);
     this.render();
-    need('peer').then(() => this.initPeer()).catch(() => this.set('neterror'));
+    need('peer').then(() => this.initPeer()).catch(() => { this.reason = 'no se pudo descargar PeerJS'; dlog('Oyente: no se pudo descargar PeerJS (unpkg ni jsDelivr)'); this.set('neterror'); });
     window.addEventListener('online', () => this.tryConnect());
   },
 
   initPeer(){
     dlog('Oyente: conectando al servidor…');
     const p = new Peer(undefined, PEER_OPTS); this.peer = p;
-    p.on('open', id => { dlog('Oyente: servidor conectado ✓ (' + id.slice(0, 8) + '…)'); this.tryConnect(); });
+    p.on('open', id => { dlog('Oyente: servidor conectado ✓ (' + id.slice(0, 8) + '…)'); this.reason = ''; this.tryConnect(); });
     p.on('call', call => this.onCall(call));
     p.on('disconnected', () => { dlog('Oyente: desconectado del servidor, reintentando'); if (!p.destroyed) setTimeout(() => { try { p.reconnect(); } catch(e){} }, 1500); });
     p.on('error', e => {
@@ -863,7 +871,7 @@ const Listener = {
         this.conn = null; dlog('Oyente: el artista no está registrado en el servidor (no está en directo)');
         this.off(); return;
       }
-      if (['network','server-error','socket-error','socket-closed'].includes(e.type)){ this.set('neterror'); this.retry(8000); }
+      if (['network','server-error','socket-error','socket-closed'].includes(e.type)){ this.reason = e.type + (e.message ? ': ' + String(e.message).slice(0, 80) : ''); this.set('neterror'); this.retry(8000); }
     });
   },
 
@@ -1044,7 +1052,7 @@ const Listener = {
         off:'Deja esta página abierta: se activará sola cuando empiece.',
         ended:'Gracias por escuchar. Esta página se activará sola en su próximo directo.',
         full:'El piloto admite 25 oyentes a la vez. Vuelve a intentarlo en unos minutos.',
-        neterror:'Revisa tu conexión. Seguimos intentándolo.',
+        neterror:'No se llega al servidor de conexión. Seguimos intentándolo.' + (this.reason ? ' (' + this.reason + ')' : ''),
         slow:'No se consigue conectar. Puede que el artista no esté en directo o que tu red tarde. Seguimos intentándolo.'
       }[st]);
     }
@@ -1071,9 +1079,11 @@ const Listener = {
         <button class="btn ghost" id="l-share" type="button">${this.shareMsg || 'Compartir'}</button>
       </div>
       <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>Mantener la pantalla encendida mientras escuchas. En algunos iPhone el sonido se corta al bloquearla.</span></label>
+      ${(st === 'neterror' || st === 'slow') ? '<a class="btn ghost" href="#test">Probar mi conexión</a>' : ''}
       <details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
         <div class="body stats" id="l-stats">${this.playing ? '<p>Midiendo…</p>' : '<p>Aparecerán cuando empieces a escuchar.</p>'}</div></details>
       ${diagHTML()}
+      <p class="note">${VERSION} · <a href="#test">Probar mi conexión</a></p>
     </div>`;
     bindDiag();
 
@@ -1090,6 +1100,74 @@ const Listener = {
 };
 
 // =========================================================================
+// PRUEBA DE CONEXIÓN: mide cada tramo y dice cuál falla
+// =========================================================================
+const SelfTest = {
+  results:[],
+  render(){
+    app.innerHTML = `
+    <div class="wrap">
+      <a class="brand" href="./">KABEL</a>
+      <div><h1 style="font-size:28px;font-stretch:112%">Probar mi conexión</h1>
+        <p style="color:var(--dim);margin-top:8px">Comprueba cada tramo entre este dispositivo y el servidor. Tarda unos 30 segundos. Hazla en el móvil y en el portátil.</p></div>
+      <ul class="tests" id="t-list" aria-live="polite"></ul>
+      <div class="verdict" id="t-verdict" hidden></div>
+      <button class="btn primary" id="t-run" type="button">Empezar prueba</button>
+      <button class="btn ghost" id="t-copy" type="button" hidden>Copiar resultados</button>
+      <p class="note">Versión ${VERSION}</p>
+    </div>`;
+    $('#t-run').onclick = () => this.run();
+    $('#t-copy').onclick = async () => { const b = $('#t-copy'); try { await navigator.clipboard.writeText(this.text()); b.textContent = 'Copiado'; } catch(e){ b.textContent = 'No se pudo copiar'; } };
+  },
+  text(){ return 'KABEL ' + VERSION + ' · prueba de conexión\n' + (navigator.userAgent.match(/(Chrome|Firefox|Safari|Version)\/[\d.]+/) || ['?'])[0] + ((navigator.connection && navigator.connection.effectiveType) ? ' · red ' + navigator.connection.effectiveType : '') + '\n' + this.results.map(r => (r.ok ? 'OK   ' : 'FALLA ') + r.name + ' — ' + r.detail).join('\n'); },
+  row(name){
+    const li = document.createElement('li'); li.className = 'run';
+    li.innerHTML = '<span class="ic">…</span><b></b><small></small>'; li.querySelector('b').textContent = name; $('#t-list').appendChild(li); return li;
+  },
+  async step(name, fn, ms){
+    const li = this.row(name), t0 = performance.now(); let ok = true, detail = '';
+    try { detail = await Promise.race([fn(), new Promise((_, rej) => setTimeout(() => rej(new Error('sin respuesta en ' + (ms / 1000) + ' s')), ms))]); }
+    catch(e){ ok = false; detail = (e && e.message) || String(e); }
+    const secs = ((performance.now() - t0) / 1000).toFixed(1) + ' s';
+    li.className = ok ? 'ok' : 'ko'; li.querySelector('.ic').textContent = ok ? '✓' : '✗'; li.querySelector('small').textContent = detail + ' · ' + secs;
+    this.results.push({ name, ok, detail }); return ok;
+  },
+  candidate(servers, policy, want, ms){
+    return () => new Promise((resolve, reject) => {
+      const pc = new RTCPeerConnection({ iceServers: servers, iceTransportPolicy: policy });
+      const done = (fn, v) => { try { pc.close(); } catch(e){} fn(v); };
+      pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate.includes(' typ ' + want)) done(resolve, 'candidato ' + want + ' recibido'); };
+      pc.onicecandidateerror = e => { if (want === 'relay' && e.errorCode && e.errorCode !== 701) done(reject, new Error('el relé respondió con error ' + e.errorCode)); };
+      pc.createDataChannel('t'); pc.createOffer().then(o => pc.setLocalDescription(o)).catch(err => done(reject, err));
+      setTimeout(() => done(reject, new Error('no se obtuvo candidato ' + want)), ms - 500);
+    });
+  },
+  async run(){
+    const btn = $('#t-run'); btn.disabled = true; btn.textContent = 'Probando…'; $('#t-list').innerHTML = ''; $('#t-verdict').hidden = true; $('#t-copy').hidden = true; this.results = [];
+    const fetchOK = async url => { const r = await fetch(url, { cache:'no-store' }); if (!r.ok) throw new Error('respondió ' + r.status); const t = await r.text(); return 'descargado (' + Math.round(t.length / 1024) + ' KB)'; };
+    const a = await this.step('Descargar PeerJS (unpkg)', () => fetchOK(LIBS.peer[0]), 10000);
+    const b = await this.step('Descargar PeerJS (jsDelivr, alternativa)', () => fetchOK(LIBS.peer[1]), 10000);
+    const c = await this.step('Servidor de conexión: pedir identificador', async () => { const r = await fetch('https://0.peerjs.com/peerjs/id?ts=' + Date.now(), { cache:'no-store' }); if (!r.ok) throw new Error('respondió ' + r.status); return 'identificador recibido'; }, 10000);
+    const d = await this.step('Servidor de conexión: canal en directo', () => new Promise((resolve, reject) => {
+      const rnd = () => Math.random().toString(36).slice(2, 12);
+      const ws = new WebSocket('wss://0.peerjs.com/peerjs?key=peerjs&id=kabeltest' + rnd() + '&token=' + rnd());
+      ws.onmessage = e => { try { const m = JSON.parse(e.data); if (m.type === 'OPEN'){ ws.close(); resolve('canal abierto'); } else if (m.type === 'ERROR'){ ws.close(); reject(new Error((m.payload && m.payload.msg) || 'el servidor lo rechazó')); } } catch(err){} };
+      ws.onerror = () => reject(new Error('no se pudo abrir el canal')); ws.onclose = ev => reject(new Error('el servidor cerró el canal (' + ev.code + ')'));
+    }), 10000);
+    const e = await this.step('Red para audio: servidor STUN', this.candidate([{ urls:'stun:stun.l.google.com:19302' }], 'all', 'srflx', 8000), 8500);
+    const f = await this.step('Red para audio: servidor relé (TURN)', this.candidate(ICE_SERVERS.filter(x => x.username), 'relay', 'relay', 10000), 10500);
+    const v = $('#t-verdict'); let msg, cls;
+    if (!a && !b){ msg = 'Este dispositivo no puede descargar PeerJS. Revisa que no haya bloqueador de contenido o modo ahorro de datos.'; cls = 'ko'; }
+    else if (!c || !d){ msg = 'Este dispositivo no llega al servidor gratuito que conecta a artista y oyente. Es el servidor público o tu red, no la app. Solución: usar un servidor de conexión propio.'; cls = 'ko'; }
+    else if (!e && !f){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
+    else if (!e){ msg = 'Esta red no permite la conexión directa, pero el relé funciona: debería conectar, algo más lento.'; cls = 'ok'; }
+    else { msg = 'Todo correcto desde este dispositivo. Si sigue sin sonar, copia los resultados y el diagnóstico de la consola y envíamelos.'; cls = 'ok'; }
+    v.className = 'verdict ' + cls; v.textContent = msg; v.hidden = false;
+    btn.disabled = false; btn.textContent = 'Repetir prueba'; $('#t-copy').hidden = false; $('#t-copy').textContent = 'Copiar resultados';
+  }
+};
+
+// =========================================================================
 // RUTAS
 // =========================================================================
 const params = new URLSearchParams(location.search);
@@ -1099,7 +1177,8 @@ function route(){
   if (listenCode) return;
   const h = location.hash.replace('#', '');
   if (Console.live && h !== 'consola'){ location.hash = 'consola'; return; }
-  if (h === 'perfil') Profile.render();
+  if (h === 'test') SelfTest.render();
+  else if (h === 'perfil') Profile.render();
   else if (h === 'consola') load(LS.artist, null) ? Console.render() : Profile.render();
   else Home.render();
   window.scrollTo(0, 0);
