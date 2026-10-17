@@ -130,6 +130,7 @@
   /* QR overlay */
   .qr-over{position:fixed;inset:0;background:#fff;color:#000;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
   .qr-over img{width:min(88vw,62vh);height:auto;image-rendering:pixelated}
+  .diag{white-space:pre-wrap;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:240px;overflow:auto;margin:0}
   .qr-over p{font-size:15px;color:#555}
   .qr-over .live-n{font-size:22px;font-weight:800;color:#000;min-height:30px}
   .qr-over .live-n:empty{display:none}
@@ -170,6 +171,51 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
+const VERSION = 'v2.1';
+// Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
+// aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
+const ICE_SERVERS = [
+  { urls:'stun:stun.l.google.com:19302' },
+  { urls:'stun:stun1.l.google.com:19302' },
+  { urls:'stun:global.stun.twilio.com:3478' },
+  { urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'], username:'peerjs', credential:'peerjsp' }
+];
+const PEER_OPTS = { config:{ iceServers: ICE_SERVERS, sdpSemantics:'unified-plan' } };
+const CONNECT_TIMEOUT = 25000;
+
+// Registro de diagnóstico: qué pasó y cuándo, para poder localizar dónde se corta la cadena.
+const DIAG = []; let diagOpen = false;
+function dlog(msg){
+  DIAG.push(new Date().toLocaleTimeString('es-ES', { hour12:false }) + '  ' + msg);
+  if (DIAG.length > 120) DIAG.shift();
+  const el = document.getElementById('diag-log'); if (el){ el.textContent = DIAG.join('\n'); el.scrollTop = el.scrollHeight; }
+}
+function diagHTML(){
+  return `<details id="diag" ${diagOpen ? 'open' : ''}><summary>Diagnóstico de conexión</summary><div class="body">
+    <pre class="diag" id="diag-log">${esc(DIAG.join('\n'))}</pre>
+    <button class="btn ghost" id="diag-copy" type="button">Copiar diagnóstico</button></div></details>`;
+}
+function bindDiag(){
+  const d = document.getElementById('diag'); if (d) d.ontoggle = () => { diagOpen = d.open; };
+  const b = document.getElementById('diag-copy');
+  if (b) b.onclick = async () => { try { await navigator.clipboard.writeText(DIAG.join('\n')); b.textContent = 'Copiado'; } catch(e){ const r = document.createRange(); r.selectNodeContents(document.getElementById('diag-log')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } };
+}
+function watchICE(conn, label){
+  try {
+    const pc = conn.peerConnection; if (!pc) return;
+    pc.addEventListener('iceconnectionstatechange', () => dlog(label + ': red ' + pc.iceConnectionState));
+    pc.addEventListener('connectionstatechange', () => dlog(label + ': enlace ' + pc.connectionState));
+  } catch(e){}
+}
+async function routeOf(conn, label){
+  try {
+    const pc = conn.peerConnection; if (!pc) return;
+    const rep = await pc.getStats(); let pair; const loc = {};
+    rep.forEach(r => { if (r.type === 'local-candidate') loc[r.id] = r; if (r.type === 'candidate-pair' && (r.nominated || r.selected) && r.state === 'succeeded') pair = r; });
+    if (pair){ const t = (loc[pair.localCandidateId] || {}).candidateType; dlog(label + ': ruta ' + (t === 'relay' ? 'por relé (TURN)' : t === 'srflx' ? 'directa (STUN)' : 'directa (local)')); }
+  } catch(e){}
+}
+dlog('KABEL ' + VERSION + ' · ' + (navigator.userAgent.match(/(Chrome|Firefox|Safari|Version)\/[\d.]+/) || ['?'])[0] + ' · ' + (location.protocol === 'https:' ? 'https' : 'SIN https') + ((navigator.connection && navigator.connection.effectiveType) ? ' · red ' + navigator.connection.effectiveType : ''));
 const ID_PREFIX = 'kabel-pilot-v1-';
 const LS = { artist:'kabel_artist', saved:'kabel_saved', device:'kabel_device', awake:'kabel_awake' };
 const LIBS = {
@@ -343,14 +389,14 @@ const Home = {
           </a>`).join('')}</div>`
         : `<p class="empty">¿Vienes a escuchar? Escanea el QR del artista con la cámara del móvil. Si lo guardas, aparecerá aquí.</p>`}
       </section>
-      <p class="foot">Prototipo. No guardamos música, sesiones ni datos de oyentes. <a href="../">Qué es Kabel</a></p>
+      <p class="foot">Prototipo ${VERSION}. No guardamos música, sesiones ni datos de oyentes. <a href="../">Qué es Kabel</a></p>
     </div>`;
     if (list.length) this.probe(list);
   },
   // Comprueba quién está en directo intentando saludar a cada artista guardado.
   async probe(list){
     try { await need('peer'); } catch(e){ list.forEach(s => this.mark(s.code, 'Sin conexión')); return; }
-    const p = new Peer();
+    const p = new Peer(undefined, PEER_OPTS);
     p.on('error', () => {});
     p.on('open', () => {
       list.forEach(s => {
@@ -492,6 +538,8 @@ const Console = {
         <button class="btn ghost" id="c-copy" type="button">Copiar código</button>
       </div></details>
 
+      ${diagHTML()}
+
       <a class="link" href="./" style="align-self:flex-start;padding-left:0">Salir de la consola</a>
     </div>`;
 
@@ -510,7 +558,7 @@ const Console = {
     };
     $('#c-now-send').onclick = sendNow;
     $('#c-now').onkeydown = e => { if (e.key === 'Enter') sendNow(); };
-    this.paintTally();
+    this.paintTally(); bindDiag();
     $('#c-dl').onclick = () => downloadQR(a.code, a.name);
     $('#c-copy').onclick = async () => { try { await navigator.clipboard.writeText(rec); $('#c-copy').textContent = 'Copiado'; } catch(e){ $('#c-rec').select(); } };
     this.paintLive();
@@ -666,17 +714,20 @@ const Console = {
     if (this.fileEl) this.fileEl.play().catch(() => {});
     this.state = 'wait'; this.paintLive();
     try { await need('peer'); } catch(e){ this.state = ''; this.paintLive(); this.banner('No se pudo cargar el sistema de conexión. Revisa internet y vuelve a pulsar.'); return; }
-    const peer = new Peer(peerIdFor(a.code), { debug:1 });
+    dlog('Artista: conectando al servidor como ' + peerIdFor(a.code));
+    const peer = new Peer(peerIdFor(a.code), Object.assign({ debug:1 }, PEER_OPTS));
     this.peer = peer;
-    peer.on('open', () => {
+    peer.on('open', id => {
+      dlog('Artista: registrado en el servidor ✓ (' + id + ')');
       if (this.live) return;
       this.live = true; this.t0 = Date.now(); this.state = 'live';
       keepAwake(true); this.banner(''); this.paintLive();
       clearInterval(this.tick); this.tick = setInterval(() => this.paintLive(), 1000);
     });
-    peer.on('connection', c => this.onConn(c));
-    peer.on('disconnected', () => { if (this.live && !peer.destroyed) setTimeout(() => { try { peer.reconnect(); } catch(e){} }, 1200); });
+    peer.on('connection', c => { dlog('Artista: un oyente intenta conectar (' + String(c.peer).slice(0, 8) + '…)'); this.onConn(c); });
+    peer.on('disconnected', () => { dlog('Artista: desconectado del servidor, reintentando'); if (this.live && !peer.destroyed) setTimeout(() => { try { peer.reconnect(); } catch(e){} }, 1200); });
     peer.on('error', e => {
+      dlog('Artista: error ' + e.type + (e.message ? ' · ' + e.message : ''));
       if (e.type === 'peer-unavailable') return;
       if (e.type === 'unavailable-id'){ this.stopPeer(); this.banner('Tu código ya está en directo en otra pestaña o dispositivo. Ciérralo y vuelve a pulsar.'); return; }
       if (e.type === 'browser-incompatible'){ this.stopPeer(); this.banner('Este navegador no permite emitir. Usa Chrome o Safari actualizados.'); return; }
@@ -686,16 +737,16 @@ const Console = {
   },
 
   onConn(c){
-    this.conns.set(c.peer, c);
-    c.on('open', () => { const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, web:a.web } }); });
+    this.conns.set(c.peer, c); watchICE(c, 'Oyente ' + String(c.peer).slice(0, 4));
+    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, web:a.web } }); });
     c.on('data', d => {
       if (!d) return;
-      if (d.t === 'listen') this.startCall(c);
+      if (d.t === 'listen'){ dlog('Artista: el oyente pulsa escuchar'); this.startCall(c); }
       if (d.t === 'stop') this.dropCall(c.peer);
       if (d.t === 'react') this.onReact(c.peer, d.e);
     });
-    c.on('close', () => { this.conns.delete(c.peer); this.dropCall(c.peer); });
-    c.on('error', () => {});
+    c.on('close', () => { dlog('Artista: oyente desconectado'); this.conns.delete(c.peer); this.dropCall(c.peer); });
+    c.on('error', err => dlog('Artista: error con oyente · ' + (err && err.type || err)));
   },
 
   snapshot(){ return { t:'state', n:this.calls.size, now:this.nowPlaying }; },
@@ -721,6 +772,7 @@ const Console = {
     if (this.calls.size >= MAX_LISTENERS){ try { c.send({ t:'full' }); } catch(e){} return; }
     const call = this.peer.call(c.peer, this.stream, { sdpTransform: opusStereo });
     if (!call) return;
+    dlog('Artista: enviando audio a un oyente'); watchICE(call, 'Audio ' + String(c.peer).slice(0, 4));
     this.calls.set(c.peer, call);
     const gone = () => { if (this.calls.get(c.peer) === call){ this.calls.delete(c.peer); this.paintLive(); this.notifyCount(); } };
     call.on('close', gone); call.on('error', gone);
@@ -764,7 +816,8 @@ const Console = {
       btn.innerHTML = `En directo<span class="timer">${t}</span>`;
       btn.setAttribute('aria-label', 'En directo, ' + t);
       const n = this.calls.size;
-      meta.innerHTML = `<b>${n}</b>${n === 1 ? 'oyente' : 'oyentes'}${n >= MAX_LISTENERS ? ' · aforo del piloto completo' : ''}`;
+      const co = [...this.conns.values()].filter(x => x.open).length;
+      meta.innerHTML = `<b>${n}</b>${n === 1 ? 'oyente escuchando' : 'oyentes escuchando'}${n >= MAX_LISTENERS ? ' · aforo del piloto completo' : ''}<small style="display:block;margin-top:6px">${co} con tu página abierta · servidor conectado</small>`;
       end.hidden = false;
       if (Date.now() - this.endArmed >= 3000) end.textContent = 'Terminar directo';
     } else if (this.state === 'wait'){
@@ -782,7 +835,7 @@ window.addEventListener('beforeunload', e => { if (Console.live){ e.preventDefau
 // =========================================================================
 const Listener = {
   code:'', pid:'', profile:null, status:'checking', peer:null, conn:null, call:null,
-  want:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, statsT:0, techOpen:false, last:null,
+  pending:false, tries:0, toT:0, want:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, statsT:0, techOpen:false, last:null,
   audio:null, n:0, now:'', lastSent:0, shareMsg:'',
 
   start(code){
@@ -797,12 +850,19 @@ const Listener = {
   },
 
   initPeer(){
-    const p = new Peer(); this.peer = p;
-    p.on('open', () => this.tryConnect());
+    dlog('Oyente: conectando al servidor…');
+    const p = new Peer(undefined, PEER_OPTS); this.peer = p;
+    p.on('open', id => { dlog('Oyente: servidor conectado ✓ (' + id.slice(0, 8) + '…)'); this.tryConnect(); });
     p.on('call', call => this.onCall(call));
-    p.on('disconnected', () => { if (!p.destroyed) setTimeout(() => { try { p.reconnect(); } catch(e){} }, 1500); });
+    p.on('disconnected', () => { dlog('Oyente: desconectado del servidor, reintentando'); if (!p.destroyed) setTimeout(() => { try { p.reconnect(); } catch(e){} }, 1500); });
     p.on('error', e => {
-      if (e.type === 'peer-unavailable'){ this.off(); return; }
+      dlog('Oyente: error ' + e.type + (e.message ? ' · ' + e.message : ''));
+      if (e.type === 'peer-unavailable'){
+        clearTimeout(this.toT); this.pending = false;
+        try { if (this.conn && !this.conn.open) this.conn.close(); } catch(err){}
+        this.conn = null; dlog('Oyente: el artista no está registrado en el servidor (no está en directo)');
+        this.off(); return;
+      }
       if (['network','server-error','socket-error','socket-closed'].includes(e.type)){ this.set('neterror'); this.retry(8000); }
     });
   },
@@ -810,21 +870,33 @@ const Listener = {
   tryConnect(){
     clearTimeout(this.retryT);
     if (!this.peer || this.peer.destroyed || !this.peer.open) return;
-    if (this.conn && this.conn.open) return;
+    if (this.conn && (this.conn.open || this.pending)) return;
+    this.pending = true; this.tries++;
+    dlog('Oyente: buscando al artista (intento ' + this.tries + ')…');
     const c = this.peer.connect(this.pid, { reliable:true }); this.conn = c;
-    const to = setTimeout(() => { if (!c.open){ try { c.close(); } catch(e){} this.off(); } }, 7000);
-    c.on('open', () => clearTimeout(to));
+    watchICE(c, 'Artista');
+    clearTimeout(this.toT);
+    this.toT = setTimeout(() => {
+      if (c.open) return;
+      this.pending = false; dlog('Oyente: sin respuesta tras ' + (CONNECT_TIMEOUT / 1000) + ' s: la conexión directa no se abre');
+      try { c.close(); } catch(e){}
+      if (this.conn === c) this.conn = null;
+      if (this.status !== 'ended') this.set('slow');
+      this.retry(6000);
+    }, CONNECT_TIMEOUT);
+    c.on('open', () => { clearTimeout(this.toT); this.pending = false; dlog('Oyente: conexión con el artista abierta ✓'); routeOf(c, 'Artista'); });
     c.on('data', d => this.onData(d));
+    c.on('error', err => dlog('Oyente: error de conexión · ' + (err && err.type || err)));
     c.on('close', () => {
-      clearTimeout(to);
       if (this.conn !== c) return;
-      this.conn = null;
+      clearTimeout(this.toT); this.pending = false; this.conn = null;
+      dlog('Oyente: conexión con el artista cerrada');
       if (this.status === 'live'){ this.stopAudio(false); this.set('ended'); }
-      this.retry(10000);
+      this.retry(8000);
     });
   },
 
-  off(){ if (this.status !== 'ended') this.set('off'); this.retry(10000); },
+  off(){ if (this.status !== 'ended') this.set('off'); this.retry(8000); },
   retry(ms){ clearTimeout(this.retryT); this.retryT = setTimeout(() => this.tryConnect(), ms); },
 
   onData(d){
@@ -835,8 +907,9 @@ const Listener = {
       this.n = Number(d.n) || 0; this.now = clip(d.now, 60);
       if (isSaved(this.code)) upsertSaved(this.profile);
       if ((was === 'off' || was === 'ended') && navigator.vibrate) navigator.vibrate([120, 60, 120]);
+      dlog('Oyente: el artista está en directo ✓');
       this.set('live');
-      if (this.want) this.conn.send({ t:'listen' });
+      if (this.want){ dlog('Oyente: pidiendo el audio'); this.conn.send({ t:'listen' }); }
     }
     if (d.t === 'state'){ this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.paintMeta(); }
     if (d.t === 'react') floatEmoji(d.e);
@@ -845,6 +918,7 @@ const Listener = {
   },
 
   listen(){
+    dlog('Oyente: pulsado escuchar (conexión ' + (this.conn && this.conn.open ? 'abierta' : 'no abierta aún') + ')');
     // Desbloqueo de audio dentro del toque del usuario (necesario en iPhone).
     try { const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC(); ctx.resume(); setTimeout(() => ctx.close(), 500); } catch(e){}
     this.audio.play().catch(() => {});
@@ -854,18 +928,20 @@ const Listener = {
     if (this.conn && this.conn.open) this.conn.send({ t:'listen' }); else this.tryConnect();
     clearTimeout(this.noAudioT);
     this.noAudioT = setTimeout(() => {
-      if (this.connecting && !this.playing){ this.connecting = false; this.want = false; this.flash = 'No llega el audio. Comprueba tu conexión y vuelve a pulsar.'; this.render(); }
+      if (this.connecting && !this.playing){ dlog('Oyente: no llegó audio en 15 s'); this.connecting = false; this.want = false; this.flash = 'No llega el audio. Comprueba tu conexión y vuelve a pulsar.'; this.render(); }
     }, 15000);
   },
 
   onCall(call){
     if (this.call){ try { this.call.close(); } catch(e){} }
     this.call = call;
+    dlog('Oyente: llamada de audio recibida'); watchICE(call, 'Audio');
     call.answer(undefined, { sdpTransform: opusStereo });
     call.on('stream', s => {
+      dlog('Oyente: audio recibido (' + s.getAudioTracks().length + ' pista)');
       this.audio.srcObject = s;
       const pr = this.audio.play();
-      if (pr) pr.then(() => { this.needTap = false; this.render(); }).catch(() => { this.needTap = true; this.render(); });
+      if (pr) pr.then(() => { dlog('Oyente: reproduciendo ✓'); this.needTap = false; this.render(); }).catch(err => { dlog('Oyente: el navegador pide un toque para sonar · ' + (err && err.name)); this.needTap = true; this.render(); });
       this.playing = true; this.connecting = false; this.flash = '';
       clearTimeout(this.noAudioT);
       this.media(); this.startStats(); this.render();
@@ -936,6 +1012,7 @@ const Listener = {
           rows.push(['Variación (jitter)', Math.round((inb.jitter || 0) * 1000) + ' ms']);
           const lost = inb.packetsLost || 0, got = inb.packetsReceived || 0;
           rows.push(['Paquetes perdidos', lost + ' (' + (got ? (100 * lost / (lost + got)).toFixed(1) : '0.0') + ' %)']);
+          if (inb.audioLevel != null) rows.push(['Nivel de sonido recibido', Math.round(inb.audioLevel * 100) + ' %']);
           if (this.last){ const kbps = ((inb.bytesReceived - this.last.b) * 8) / ((inb.timestamp - this.last.t)); rows.push(['Calidad recibida', Math.round(kbps) + ' kbps']); }
           this.last = { b: inb.bytesReceived, t: inb.timestamp };
         }
@@ -947,7 +1024,7 @@ const Listener = {
   render(){
     const p = this.profile, st = this.status;
     const links = [['Instagram', p.ig], ['YouTube', p.yt], ['Web', p.web]].filter(l => l[1]);
-    const statusTxt = { checking:'Buscando el directo…', live:'En directo ahora', off:'Ahora no está en directo', ended:'El directo ha terminado', full:'Aforo completo', neterror:'Sin conexión a internet' }[st];
+    const statusTxt = { checking:'Buscando el directo…', live:'En directo ahora', off:'Ahora no está en directo', ended:'El directo ha terminado', full:'Aforo completo', neterror:'Sin conexión a internet', slow:'Sin respuesta del artista' }[st];
     const svgPlay = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>';
     const svgStop = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
 
@@ -967,7 +1044,8 @@ const Listener = {
         off:'Deja esta página abierta: se activará sola cuando empiece.',
         ended:'Gracias por escuchar. Esta página se activará sola en su próximo directo.',
         full:'El piloto admite 25 oyentes a la vez. Vuelve a intentarlo en unos minutos.',
-        neterror:'Revisa tu conexión. Seguimos intentándolo.'
+        neterror:'Revisa tu conexión. Seguimos intentándolo.',
+        slow:'No se consigue conectar. Puede que el artista no esté en directo o que tu red tarde. Seguimos intentándolo.'
       }[st]);
     }
 
@@ -995,7 +1073,9 @@ const Listener = {
       <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>Mantener la pantalla encendida mientras escuchas. En algunos iPhone el sonido se corta al bloquearla.</span></label>
       <details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
         <div class="body stats" id="l-stats">${this.playing ? '<p>Midiendo…</p>' : '<p>Aparecerán cuando empieces a escuchar.</p>'}</div></details>
+      ${diagHTML()}
     </div>`;
+    bindDiag();
 
     const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
     on('#l-play', () => { this.flash = ''; this.listen(); });
