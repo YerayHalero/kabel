@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>KABEL · prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000; --ink:#EDEEE6; --dim:#8A8D84; --line:#262821; --panel:#0B0C09;
+    --lime:#C8F03C; --red:#FF4B2B; --amber:#F2C23C;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:16px;line-height:1.45;
+       -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:460px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 20px 44px;min-height:100svh;display:flex;flex-direction:column;gap:22px}
+  h1,h2{margin:0;font-weight:800}
+  h2{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:12px}
+  p{margin:0}
+  a{color:var(--lime)}
+  :focus-visible{outline:3px solid var(--lime);outline-offset:3px;border-radius:8px}
+
+  .mark{font-weight:900;font-stretch:125%;font-size:52px;letter-spacing:.01em;line-height:.95}
+  .brand{font-weight:900;font-stretch:125%;font-size:18px;color:var(--ink);text-decoration:none;align-self:flex-start}
+  .tag{color:var(--lime);font-size:19px;font-weight:500;font-style:italic;margin-top:10px;max-width:22ch}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;padding:14px 18px;border-radius:14px;
+       border:0;font:inherit;font-weight:700;font-size:17px;cursor:pointer;text-decoration:none}
+  .btn.primary{background:var(--lime);color:#000}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn.danger{background:transparent;color:var(--red);border:1.5px solid var(--red)}
+  .btn:disabled{opacity:.4;cursor:default}
+  .link{background:none;border:0;color:var(--lime);font:inherit;font-weight:600;padding:8px;cursor:pointer}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:14px;color:var(--dim)}
+  .field small{font-size:12px;color:var(--dim)}
+  input[type=text],input[type=url],textarea,select{width:100%;background:var(--panel);border:1.5px solid var(--line);color:var(--ink);
+       border-radius:12px;padding:15px 14px;font:inherit;font-size:16px}
+  textarea{resize:none;min-height:76px}
+  input[type=file]{color:var(--dim);font:inherit;font-size:14px;max-width:100%}
+  input[type=file]::file-selector-button{background:transparent;color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:9px 14px;margin-right:10px;font:inherit;font-weight:600;cursor:pointer}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+       background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:40px}
+  input::placeholder,textarea::placeholder{color:#555850}
+  .err{color:var(--red);font-size:14px}
+
+  .switch{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--dim);cursor:pointer}
+  .switch input{appearance:none;flex:none;width:44px;height:26px;border-radius:26px;background:#22241E;position:relative;margin:0;cursor:pointer;transition:background .15s}
+  .switch input::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--dim);transition:transform .15s,background .15s}
+  .switch input:checked{background:#3B4718}
+  .switch input:checked::after{transform:translateX(18px);background:var(--lime)}
+
+  .mono{flex:none;display:grid;place-items:center;border-radius:50%;background:var(--lime);color:#000;font-weight:900;font-stretch:125%}
+  .mono.sm{width:44px;height:44px;font-size:18px}
+  .mono.xl{width:112px;height:112px;font-size:48px}
+
+  /* home */
+  .saved-list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+  .saved-row{display:flex;gap:14px;align-items:center;padding:14px 2px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+  .saved-row b{display:block;font-size:17px}
+  .saved-row small{color:var(--dim);font-size:13px}
+  .saved-row small.on{color:var(--red);font-weight:700}
+  .empty{color:var(--dim);font-size:15px}
+  .foot{margin-top:auto;color:#555850;font-size:12px}
+
+  /* console */
+  .who{display:flex;gap:12px;align-items:center}
+  .who-t{flex:1;min-width:0}
+  .who-t b{display:block;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .who-t small{color:var(--dim);font-size:13px}
+  .panel{border:1.5px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+  .meter{display:grid;grid-template-columns:14px 1fr;gap:7px 8px;align-items:center;font-size:12px;color:var(--dim);font-weight:700}
+  .segs{display:grid;grid-template-columns:repeat(20,1fr);gap:3px}
+  .seg{height:16px;border-radius:2px;background:#191B15}
+  .seg.g{background:var(--lime)} .seg.y{background:var(--amber)} .seg.r{background:var(--red)}
+  .hint{font-size:14px;color:var(--dim);min-height:20px}
+  .hint.ok{color:var(--lime)} .hint.warn{color:var(--amber)} .hint.bad{color:var(--red)}
+
+  .stage{display:flex;flex-direction:column;align-items:center;gap:14px;padding:6px 0}
+  .live-btn{width:216px;height:216px;border-radius:50%;border:0;background:var(--red);color:#fff;cursor:pointer;
+       font:inherit;font-weight:900;font-stretch:125%;font-size:24px;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+       box-shadow:0 0 0 10px rgba(255,75,43,.12)}
+  .live-btn .timer{font-size:17px;font-weight:600;font-stretch:100%;font-variant-numeric:tabular-nums;opacity:.9}
+  .live-btn.on{background:#000;border:4px solid var(--red);color:var(--red);cursor:default;animation:ring 2.2s ease-out infinite}
+  .live-btn.wait{background:#2A1510;color:#FFB4A4}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,75,43,.45)}80%,100%{box-shadow:0 0 0 26px rgba(255,75,43,0)}}
+  .live-meta{text-align:center;color:var(--dim);font-size:15px;max-width:30ch}
+  .live-meta b{color:var(--ink);font-size:22px;display:block;font-variant-numeric:tabular-nums}
+  .note{font-size:13px;color:var(--dim)}
+  details{border-top:1px solid var(--line);padding-top:12px}
+  summary{cursor:pointer;color:var(--ink);font-weight:600;font-size:15px;padding:6px 0;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:'+ ';color:var(--lime)}
+  details[open] summary::before{content:'– '}
+  details .body{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px;color:var(--dim);font-size:14px}
+  details .body b{color:var(--ink)}
+  .banner{border:1.5px solid var(--red);color:#FFB4A4;border-radius:12px;padding:12px 14px;font-size:14px}
+
+  /* listener */
+  .artist{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding-top:8px}
+  .artist h1{font-size:30px;font-stretch:118%;line-height:1.05;overflow-wrap:anywhere}
+  .bio{color:var(--dim);font-size:16px;max-width:32ch}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .chip{border:1.5px solid var(--line);border-radius:30px;padding:8px 14px;font-size:14px;font-weight:600;color:var(--ink);text-decoration:none}
+  .status{display:flex;align-items:center;justify-content:center;gap:9px;font-weight:700;font-size:15px;color:var(--dim)}
+  .status .dot{width:10px;height:10px;border-radius:50%;background:#44473F}
+  .status.live{color:var(--red)} .status.live .dot{background:var(--red);animation:blink 1.4s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .player{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .play{width:156px;height:156px;border-radius:50%;border:0;background:var(--lime);color:#000;cursor:pointer;display:grid;place-items:center}
+  .play:disabled{background:#1A1C16;color:#44473F;cursor:default}
+  .play.stop{background:#000;border:3px solid var(--lime);color:var(--lime)}
+  .play svg{width:52px;height:52px}
+  .sub{text-align:center;color:var(--dim);font-size:15px;max-width:30ch;min-height:44px}
+  .eq{display:flex;gap:5px;align-items:flex-end;height:26px}
+  .eq i{display:block;width:6px;background:var(--lime);border-radius:2px;animation:eq 1s ease-in-out infinite}
+  .eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}.eq i:nth-child(4){animation-delay:-.15s}.eq i:nth-child(5){animation-delay:-.45s}
+  @keyframes eq{0%,100%{height:6px}50%{height:26px}}
+  .spin{width:44px;height:44px;border-radius:50%;border:4px solid #2A2D24;border-top-color:var(--lime);animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .stats{font-variant-numeric:tabular-nums}
+
+  /* QR overlay */
+  .qr-over{position:fixed;inset:0;background:#fff;color:#000;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+  .qr-over img{width:min(88vw,62vh);height:auto;image-rendering:pixelated}
+  .qr-over p{font-size:15px;color:#555}
+  .qr-over .live-n{font-size:22px;font-weight:800;color:#000;min-height:30px}
+  .qr-over .live-n:empty{display:none}
+
+  /* reacciones, ahora suena, compartir */
+  .react-bar{display:flex;gap:12px;justify-content:center}
+  .react{width:58px;height:58px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);font-size:25px;line-height:1;cursor:pointer;transition:transform .08s}
+  .react:active{transform:scale(.88)}
+  .floats{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+  .float{position:absolute;bottom:16%;font-size:30px;animation:rise 2.4s ease-out forwards}
+  @keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-20px) scale(1)}100%{transform:translateY(-55vh) scale(1.1);opacity:0}}
+  .now{border:1.5px solid var(--line);border-radius:14px;padding:10px 14px;text-align:center;font-size:16px;font-weight:600;overflow-wrap:anywhere}
+  .now small{display:block;color:var(--dim);font-size:12px;font-weight:500;margin-bottom:2px}
+  .tally{display:flex;gap:16px;justify-content:center;color:var(--dim);font-size:15px;font-variant-numeric:tabular-nums;min-height:22px}
+  .inline{display:flex;gap:8px}
+  .inline input{flex:1;min-width:0}
+  .inline .btn{width:auto;min-height:0;padding:0 18px;font-size:15px}
+  .qr-over .btn{max-width:320px;background:#000;color:#fff}
+
+  @media (prefers-reduced-motion:reduce){
+    .live-btn.on,.status.live .dot,.eq i,.spin{animation:none}
+    .eq i{height:16px}
+    .float{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   KABEL · app piloto
+   Un solo archivo: consola del artista + página del oyente.
+   Transporte del piloto: WebRTC entre dispositivos (PeerJS), sin servidor propio.
+   El artista envía el audio directamente a cada oyente -> límite de 25 oyentes.
+   En la Fase 1 se sustituye por un SFU (LiveKit) sin cambiar la interfaz.
+   No se guarda música, sesiones ni datos de oyentes: todo vive en el dispositivo.
+   ========================================================================= */
+
+const MAX_LISTENERS = 25;
+const ID_PREFIX = 'kabel-pilot-v1-';
+const LS = { artist:'kabel_artist', saved:'kabel_saved', device:'kabel_device', awake:'kabel_awake' };
+const LIBS = {
+  peer: ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'],
+  qr:   ['https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js','https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js']
+};
+
+const REACTIONS = ['🔥','🙌','❤️'];
+const app = document.getElementById('app');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+
+// ---------- utilidades ----------
+function loadScript(urls){
+  return new Promise((resolve, reject) => {
+    let i = 0;
+    const next = () => {
+      if (i >= urls.length) return reject(new Error('No se pudo cargar ' + urls[0]));
+      const s = document.createElement('script');
+      s.src = urls[i++]; s.async = true;
+      s.onload = resolve; s.onerror = () => { s.remove(); next(); };
+      document.head.appendChild(s);
+    };
+    next();
+  });
+}
+const libCache = {};
+const need = name => libCache[name] || (libCache[name] = loadScript(LIBS[name]));
+
+function genCode(name){
+  const base = (name.normalize('NFD').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,4)) || 'KBL';
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let r = ''; const a = new Uint32Array(4); crypto.getRandomValues(a);
+  for (const n of a) r += abc[n % abc.length];
+  return base + '-' + r;
+}
+const peerIdFor = code => ID_PREFIX + code.toLowerCase().replace(/[^a-z0-9-]/g,'');
+const initial = name => (String(name || '?').trim()[0] || '?').toUpperCase();
+
+function safeURL(u){
+  try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; } catch(e){ return ''; }
+}
+function normLink(v, kind){
+  v = (v || '').trim(); if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return safeURL(v);
+  const h = v.replace(/^@/,'');
+  if (kind === 'ig') return safeURL('https://instagram.com/' + h);
+  if (kind === 'yt') return safeURL('https://youtube.com/@' + h);
+  return safeURL('https://' + v);
+}
+function cleanProfile(p, code){
+  p = p || {};
+  return {
+    code, name: String(p.name || code.split('-')[0]).slice(0,32), bio: String(p.bio || '').slice(0,90),
+    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), web: safeURL(p.web || '')
+  };
+}
+const baseURL = () => location.href.split('#')[0].split('?')[0];
+const listenURL = code => baseURL() + '?a=' + encodeURIComponent(code);
+
+// Opus en estéreo, 128 kbps y sin DTX: la configuración por defecto de WebRTC está pensada para voz.
+function opusStereo(sdp){
+  const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+  if (!m) return sdp;
+  const pt = m[1];
+  const re = new RegExp('a=fmtp:' + pt + ' ([^\\r\\n]*)');
+  const extra = ['stereo=1','sprop-stereo=1','maxaveragebitrate=128000','usedtx=0'];
+  if (re.test(sdp)) {
+    return sdp.replace(re, (all, params) => {
+      const kept = params.split(';').map(s => s.trim()).filter(s => s && !/^(stereo|sprop-stereo|maxaveragebitrate|usedtx)=/i.test(s));
+      return 'a=fmtp:' + pt + ' ' + kept.concat(extra).join(';');
+    });
+  }
+  return sdp.replace(new RegExp('(a=rtpmap:' + pt + ' opus/48000/2\\r?\\n)', 'i'), '$1a=fmtp:' + pt + ' ' + extra.join(';') + '\r\n');
+}
+
+// Pantalla encendida (Wake Lock)
+let wakeLock = null, wantAwake = false;
+async function keepAwake(on){
+  wantAwake = on;
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wantAwake) keepAwake(true); });
+
+const saved = () => load(LS.saved, []);
+const isSaved = code => saved().some(s => s.code === code);
+function upsertSaved(p){ const list = saved().filter(s => s.code !== p.code); list.unshift(p); store(LS.saved, list); }
+function removeSaved(code){ store(LS.saved, saved().filter(s => s.code !== code)); }
+
+// Emojis que suben por la pantalla: efímeros, no se guardan en ningún sitio.
+function floatEmoji(e){
+  if (!REACTIONS.includes(e)) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let layer = document.getElementById('floats');
+  if (!layer){ layer = document.createElement('div'); layer.id = 'floats'; layer.className = 'floats'; layer.setAttribute('aria-hidden', 'true'); document.body.appendChild(layer); }
+  if (layer.childElementCount > 30) return;
+  const el = document.createElement('span'); el.className = 'float'; el.textContent = e;
+  el.style.left = (8 + Math.random() * 80) + '%';
+  layer.appendChild(el); setTimeout(() => el.remove(), 2500);
+}
+const clip = (v, n) => String(v || '').slice(0, n);
+
+// ---------- QR ----------
+async function qrCanvas(code, name){
+  await need('qr');
+  const qr = qrcode(0, 'M'); qr.addData(listenURL(code)); qr.make();
+  const n = qr.getModuleCount(), cell = 14, quiet = 4, pad = 36;
+  const size = (n + quiet * 2) * cell;
+  const cv = document.createElement('canvas');
+  cv.width = size + pad * 2; cv.height = size + pad * 2 + 150;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  g.fillStyle = '#000';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++)
+    if (qr.isDark(r, c)) g.fillRect(pad + (c + quiet) * cell, pad + (r + quiet) * cell, cell, cell);
+  g.textAlign = 'center';
+  g.font = '800 44px Archivo, system-ui, sans-serif';
+  g.fillText(name, cv.width / 2, size + pad + 58, cv.width - pad * 2);
+  g.font = '500 26px Archivo, system-ui, sans-serif'; g.fillStyle = '#444';
+  g.fillText('Escanea y escucha el directo con tus auriculares', cv.width / 2, size + pad + 100, cv.width - pad * 2);
+  g.font = '900 22px Archivo, system-ui, sans-serif'; g.fillStyle = '#000';
+  g.fillText('KABEL', cv.width / 2, size + pad + 136);
+  return cv;
+}
+// Modo cabina: QR a pantalla completa con el número de oyentes en vivo.
+async function showQR(code, name, countFn){
+  let cv;
+  try { cv = await qrCanvas(code, name); } catch(e){ alert('No se pudo generar el QR. Revisa la conexión a internet.'); return; }
+  const o = document.createElement('div'); o.className = 'qr-over';
+  o.innerHTML = `<img alt="Código QR para escuchar a ${esc(name)}" src="${cv.toDataURL('image/png')}">
+    <div class="live-n" aria-live="polite"></div>
+    <p>Sube el brillo de la pantalla para que se escanee mejor.</p>
+    <button class="btn" type="button">Cerrar</button>`;
+  const n = o.querySelector('.live-n');
+  const upd = () => { const v = countFn ? countFn() : null; n.textContent = v == null ? '' : '● ' + v + ' escuchando ahora'; };
+  upd(); const iv = setInterval(upd, 1000);
+  o.querySelector('button').onclick = () => { clearInterval(iv); o.remove(); };
+  document.body.appendChild(o);
+}
+async function downloadQR(code, name){
+  let cv;
+  try { cv = await qrCanvas(code, name); } catch(e){ alert('No se pudo generar el QR. Revisa la conexión a internet.'); return; }
+  cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'KABEL-QR-' + code + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); });
+}
+
+// =========================================================================
+// INICIO
+// =========================================================================
+const Home = {
+  render(){
+    const a = load(LS.artist, null);
+    const list = saved();
+    app.innerHTML = `
+    <div class="wrap">
+      <header style="padding-top:28px">
+        <div class="mark">KABEL</div>
+        <p class="tag">Tu música, tus auriculares, cero cola para alquilar cascos.</p>
+      </header>
+      <a class="btn primary" href="#consola">${a ? 'Abrir mi consola de artista' : 'Emitir como artista'}</a>
+      <section>
+        <h2>Tus artistas</h2>
+        ${list.length ? `<div class="saved-list">${list.map(s => `
+          <a class="saved-row" href="?a=${encodeURIComponent(s.code)}">
+            <span class="mono sm">${esc(initial(s.name))}</span>
+            <span><b>${esc(s.name)}</b><small data-st="${esc(s.code)}">Comprobando…</small></span>
+          </a>`).join('')}</div>`
+        : `<p class="empty">¿Vienes a escuchar? Escanea el QR del artista con la cámara del móvil. Si lo guardas, aparecerá aquí.</p>`}
+      </section>
+      <p class="foot">Prototipo. No guardamos música, sesiones ni datos de oyentes. <a href="../">Qué es Kabel</a></p>
+    </div>`;
+    if (list.length) this.probe(list);
+  },
+  // Comprueba quién está en directo intentando saludar a cada artista guardado.
+  async probe(list){
+    try { await need('peer'); } catch(e){ list.forEach(s => this.mark(s.code, 'Sin conexión')); return; }
+    const p = new Peer();
+    p.on('error', () => {});
+    p.on('open', () => {
+      list.forEach(s => {
+        let done = false;
+        const c = p.connect(peerIdFor(s.code), { reliable:true });
+        const to = setTimeout(() => { if (!done){ done = true; this.mark(s.code, 'Sin directo ahora'); try{ c.close(); }catch(e){} } }, 6000);
+        c.on('data', d => { if (d && d.t === 'hello' && !done){ done = true; clearTimeout(to); this.mark(s.code, 'En directo ahora', true); setTimeout(() => { try{ c.close(); }catch(e){} }, 300); } });
+      });
+      setTimeout(() => { try{ p.destroy(); }catch(e){} }, 8000);
+    });
+  },
+  mark(code, text, on){
+    const el = document.querySelector(`[data-st="${CSS.escape(code)}"]`);
+    if (el){ el.textContent = text; el.classList.toggle('on', !!on); }
+  }
+};
+
+// =========================================================================
+// PERFIL DEL ARTISTA (registro estilo Find Y Crew: sin email ni contraseña)
+// =========================================================================
+const Profile = {
+  render(){
+    const a = load(LS.artist, null) || {};
+    const editing = !!a.code;
+    app.innerHTML = `
+    <div class="wrap">
+      <a class="brand" href="./">KABEL</a>
+      <div>
+        <h1 style="font-size:28px;font-stretch:112%">${editing ? 'Editar perfil' : 'Crea tu perfil de artista'}</h1>
+        <p style="color:var(--dim);margin-top:8px">Solo lo que ve tu público. Nada más.</p>
+      </div>
+      <div class="field"><label for="f-name">Nombre artístico</label>
+        <input type="text" id="f-name" maxlength="32" autocomplete="off" value="${esc(a.name)}" placeholder="DJ Nova"></div>
+      <div class="field"><label for="f-bio">Descripción breve</label>
+        <textarea id="f-bio" maxlength="90" placeholder="Techno oscuro desde Copenhague">${esc(a.bio)}</textarea>
+        <small id="f-count"></small></div>
+      <div class="field"><label for="f-ig">Instagram (opcional)</label>
+        <input type="text" id="f-ig" autocomplete="off" autocapitalize="off" value="${esc(a.ig)}" placeholder="@tuusuario"></div>
+      <div class="field"><label for="f-yt">YouTube (opcional)</label>
+        <input type="text" id="f-yt" autocomplete="off" autocapitalize="off" value="${esc(a.yt)}" placeholder="@tucanal"></div>
+      <div class="field"><label for="f-web">Otra red o web (opcional)</label>
+        <input type="url" id="f-web" autocomplete="off" autocapitalize="off" value="${esc(a.web)}" placeholder="soundcloud.com/tuusuario"></div>
+      <p class="err" id="f-err" hidden></p>
+      <button class="btn primary" id="f-save" type="button">${editing ? 'Guardar cambios' : 'Crear perfil'}</button>
+      ${editing ? `<a class="btn ghost" href="#consola">Volver a la consola</a>`
+        : `<button class="link" id="f-rec" type="button">Ya tengo perfil: recuperarlo</button>`}
+      <p class="note">Tu perfil se guarda en este dispositivo. Tu QR no cambia aunque edites el perfil.</p>
+    </div>`;
+    const bio = $('#f-bio'), cnt = $('#f-count');
+    const upd = () => cnt.textContent = (90 - bio.value.length) + ' caracteres disponibles';
+    bio.oninput = upd; upd();
+    $('#f-save').onclick = () => {
+      const name = $('#f-name').value.trim();
+      if (!name){ const e = $('#f-err'); e.textContent = 'Escribe tu nombre artístico para continuar.'; e.hidden = false; $('#f-name').focus(); return; }
+      const p = {
+        code: a.code || genCode(name), name, bio: bio.value.trim(),
+        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), web: normLink($('#f-web').value, 'web')
+      };
+      store(LS.artist, p);
+      location.hash = 'consola';
+    };
+    const rec = $('#f-rec');
+    if (rec) rec.onclick = () => {
+      const t = prompt('Pega tu código de recuperación');
+      if (!t) return;
+      try {
+        const p = JSON.parse(decodeURIComponent(escape(atob(t.trim()))));
+        if (!p.code || !p.name) throw 0;
+        store(LS.artist, Object.assign(cleanProfile(p, String(p.code).toUpperCase()), {}));
+        location.hash = 'consola';
+      } catch(e){ alert('Ese código de recuperación no es válido. Cópialo completo desde tu otro dispositivo.'); }
+    };
+  }
+};
+
+// =========================================================================
+// CONSOLA DEL ARTISTA
+// =========================================================================
+const Console = {
+  ctx:null, splitter:null, anL:null, anR:null, monGain:null, src:null,
+  stream:null, fileEl:null, mono:false, devices:[], source:'',
+  peer:null, conns:new Map(), calls:new Map(), live:false, t0:0, tick:0, endArmed:0, raf:0,
+  hold:{ v:-100, t:0 }, nowPlaying:'', tally:{}, lastReact:new Map(), sentN:-1,
+
+  get artist(){ return load(LS.artist, null); },
+
+  render(){
+    const a = this.artist;
+    if (!a){ location.hash = 'perfil'; return; }
+    const rec = btoa(unescape(encodeURIComponent(JSON.stringify(a))));
+    app.innerHTML = `
+    <div class="wrap">
+      <header class="who">
+        <span class="mono sm">${esc(initial(a.name))}</span>
+        <div class="who-t"><b>${esc(a.name)}</b><small>Tu código: ${esc(a.code)}</small></div>
+        <button class="link" id="c-edit" type="button">Editar</button>
+      </header>
+
+      <div class="banner" id="c-banner" hidden></div>
+
+      <section class="panel" aria-labelledby="c-in">
+        <h2 id="c-in" style="margin:0">Entrada de audio</h2>
+        <div id="c-src"></div>
+        <div class="meter" aria-hidden="true"><span>I</span><div class="segs" id="mL"></div><span>D</span><div class="segs" id="mR"></div></div>
+        <p class="hint" id="c-hint" role="status">Activa una entrada para ver el nivel.</p>
+        <label class="switch"><input type="checkbox" id="c-mon"><span>Escuchar lo que se emite, con auriculares</span></label>
+      </section>
+
+      <section class="stage">
+        <button class="live-btn" id="c-live" type="button">Ir en directo</button>
+        <div class="live-meta" id="c-meta">Cuando pulses, quien escanee tu QR te escuchará.</div>
+        <div class="tally" id="c-tally" aria-live="polite"></div>
+        <button class="btn danger" id="c-end" type="button" hidden style="max-width:280px">Terminar directo</button>
+      </section>
+
+      <section class="field">
+        <label for="c-now">Ahora suena (opcional)</label>
+        <div class="inline"><input type="text" id="c-now" maxlength="60" autocomplete="off" placeholder="Tema, artista o estilo" value="${esc(this.nowPlaying)}">
+          <button class="btn ghost" id="c-now-send" type="button">Mostrar</button></div>
+        <small id="c-now-st">${this.nowPlaying ? 'Tus oyentes lo están viendo.' : 'Tus oyentes lo verán bajo tu nombre.'}</small>
+      </section>
+
+      <div class="row2">
+        <button class="btn ghost" id="c-qr" type="button">Mostrar QR</button>
+        <button class="btn ghost" id="c-dl" type="button">Descargar QR</button>
+      </div>
+      <p class="note">Piloto: hasta ${MAX_LISTENERS} oyentes a la vez. Mantén esta pantalla abierta y el cargador conectado. Mejor con cable de red o 4G/5G estable.</p>
+
+      <details><summary>Cómo conectar tu equipo</summary><div class="body">
+        <p><b>Mesa o controlador:</b> usa la salida REC o BOOTH hacia una interfaz de audio USB. Si tu mesa tiene tarjeta de sonido USB, conéctala directamente y elígela en la lista.</p>
+        <p><b>Solo portátil:</b> instala un cable de audio virtual (BlackHole en Mac, VB-Cable en Windows), envía ahí la salida de tu programa de DJ y elígelo en la lista.</p>
+        <p><b>Instrumento o voz:</b> guitarra o bajo a la entrada de instrumento de la interfaz; micrófono a la entrada XLR.</p>
+        <p><b>Nivel:</b> los picos pueden llegar al amarillo, nunca al rojo. Si oyes un zumbido, prueba cables balanceados o una caja DI.</p>
+      </div></details>
+
+      <details><summary>Usar tu perfil en otro dispositivo</summary><div class="body">
+        <p>Copia este código de recuperación y pégalo en el otro dispositivo, en "Ya tengo perfil". Quien lo tenga puede emitir como tú: no lo compartas.</p>
+        <textarea readonly id="c-rec" style="font-size:12px;min-height:90px">${esc(rec)}</textarea>
+        <button class="btn ghost" id="c-copy" type="button">Copiar código</button>
+      </div></details>
+
+      <a class="link" href="./" style="align-self:flex-start;padding-left:0">Salir de la consola</a>
+    </div>`;
+
+    ['mL','mR'].forEach(id => { $('#' + id).innerHTML = Array.from({length:20}, () => '<span class="seg"></span>').join(''); });
+    this.renderSource();
+    $('#c-mon').checked = !!(this.monGain && this.monGain.gain.value > 0);
+    $('#c-mon').onchange = e => { this.ensureCtx(); this.monGain.gain.value = e.target.checked ? 1 : 0; };
+    $('#c-live').onclick = () => { if (!this.live && !this.peer) this.goLive(); };
+    $('#c-end').onclick = () => this.askEnd();
+    $('#c-edit').onclick = () => { if (this.live){ this.banner('Termina el directo para editar tu perfil.'); return; } location.hash = 'perfil'; };
+    $('#c-qr').onclick = () => showQR(a.code, a.name, () => this.live ? this.calls.size : null);
+    const sendNow = () => {
+      this.nowPlaying = clip($('#c-now').value.trim(), 60);
+      this.broadcast(this.snapshot());
+      $('#c-now-st').textContent = this.nowPlaying ? (this.live ? 'Tus oyentes lo están viendo.' : 'Se mostrará cuando vayas en directo.') : 'Tus oyentes lo verán bajo tu nombre.';
+    };
+    $('#c-now-send').onclick = sendNow;
+    $('#c-now').onkeydown = e => { if (e.key === 'Enter') sendNow(); };
+    this.paintTally();
+    $('#c-dl').onclick = () => downloadQR(a.code, a.name);
+    $('#c-copy').onclick = async () => { try { await navigator.clipboard.writeText(rec); $('#c-copy').textContent = 'Copiado'; } catch(e){ $('#c-rec').select(); } };
+    this.paintLive();
+    cancelAnimationFrame(this.raf); this.meter();
+  },
+
+  banner(msg){ const b = $('#c-banner'); if (!b) return; b.textContent = msg; b.hidden = !msg; },
+
+  renderSource(){
+    const box = $('#c-src'); if (!box) return;
+    if (!this.devices.length){
+      box.innerHTML = `<button class="btn ghost" id="c-allow" type="button">Activar entradas de audio</button>`;
+      $('#c-allow').onclick = () => this.allow();
+      return;
+    }
+    const opts = this.devices.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Entrada ' + (i + 1))}</option>`).join('');
+    box.innerHTML = `
+      <div class="field"><label for="c-sel">Fuente</label>
+        <select id="c-sel">${opts}<option value="__file">Archivo de prueba de este dispositivo</option></select></div>
+      <div class="field" id="c-filerow" hidden><label for="c-file">Archivo de audio</label><input type="file" id="c-file" accept="audio/*"></div>`;
+    const sel = $('#c-sel');
+    sel.value = this.source || (this.devices[0] && this.devices[0].deviceId) || '';
+    if (sel.selectedIndex < 0) sel.selectedIndex = 0;
+    $('#c-filerow').hidden = sel.value !== '__file';
+    sel.onchange = () => {
+      const v = sel.value;
+      $('#c-filerow').hidden = v !== '__file';
+      if (v !== '__file') this.useDevice(v);
+    };
+    $('#c-file').onchange = e => { const f = e.target.files[0]; if (f) this.useFile(f); };
+  },
+
+  constraints(id){
+    return { video:false, audio:{
+      deviceId: id ? { exact:id } : undefined,
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false,
+      channelCount:{ ideal:2 }, sampleRate:{ ideal:48000 }
+    }};
+  },
+
+  async allow(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      this.banner('Este navegador no permite capturar audio. Abre la página con Chrome o Safari actualizados y por https.'); return false;
+    }
+    try {
+      const pref = load(LS.device, '');
+      let s;
+      try { s = await navigator.mediaDevices.getUserMedia(this.constraints(pref || undefined)); }
+      catch(e){ s = await navigator.mediaDevices.getUserMedia(this.constraints()); }
+      const all = await navigator.mediaDevices.enumerateDevices();
+      this.devices = all.filter(d => d.kind === 'audioinput' && d.deviceId !== 'communications');
+      if (!this.devices.length) this.devices = all.filter(d => d.kind === 'audioinput');
+      const cur = s.getAudioTracks()[0].getSettings().deviceId;
+      this.source = cur || (this.devices[0] && this.devices[0].deviceId) || '';
+      this.swap(s, ctx => ctx.createMediaStreamSource(s));
+      this.renderSource();
+      this.banner('');
+      return true;
+    } catch(e){
+      this.banner('Sin permiso para usar el audio. Permite el micrófono en el navegador (icono junto a la dirección) y vuelve a intentarlo.');
+      return false;
+    }
+  },
+
+  async useDevice(id){
+    try {
+      const s = await navigator.mediaDevices.getUserMedia(this.constraints(id));
+      this.source = id; store(LS.device, id);
+      this.swap(s, ctx => ctx.createMediaStreamSource(s));
+    } catch(e){ this.banner('No se pudo abrir esa entrada. Comprueba que está conectada y que ningún otro programa la está usando.'); }
+  },
+
+  async useFile(file){
+    this.ensureCtx();
+    const el = new Audio(); el.src = URL.createObjectURL(file); el.loop = true;
+    const node = this.ctx.createMediaElementSource(el);
+    const dest = this.ctx.createMediaStreamDestination(); dest.channelCount = 2;
+    node.connect(dest);
+    try { await el.play(); } catch(e){}
+    this.source = '__file';
+    this.swap(dest.stream, () => node, el);
+  },
+
+  ensureCtx(){
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC({ latencyHint:'playback' });
+    this.splitter = this.ctx.createChannelSplitter(2);
+    this.anL = this.ctx.createAnalyser(); this.anR = this.ctx.createAnalyser();
+    this.anL.fftSize = this.anR.fftSize = 1024;
+    this.splitter.connect(this.anL, 0); this.splitter.connect(this.anR, 1);
+    this.monGain = this.ctx.createGain(); this.monGain.gain.value = 0; this.monGain.connect(this.ctx.destination);
+  },
+
+  swap(stream, makeNode, fileEl){
+    this.ensureCtx();
+    const oldStream = this.stream, oldFile = this.fileEl;
+    if (this.src){ try { this.src.disconnect(); } catch(e){} }
+    if (oldFile && oldFile !== fileEl){ oldFile.pause(); URL.revokeObjectURL(oldFile.src); }
+    this.fileEl = fileEl || null;
+    const node = makeNode(this.ctx);
+    node.connect(this.splitter); node.connect(this.monGain);
+    this.src = node; this.stream = stream;
+    const tr = stream.getAudioTracks()[0];
+    const st = tr && tr.getSettings ? tr.getSettings() : {};
+    this.mono = st.channelCount === 1;
+    // En directo: se cambia la pista en todas las conexiones sin cortar a nadie.
+    if (tr) this.calls.forEach(call => {
+      const pc = call.peerConnection; if (!pc) return;
+      pc.getSenders().forEach(snd => { if (snd.track && snd.track.kind === 'audio') snd.replaceTrack(tr); });
+    });
+    if (oldStream && oldStream !== stream && !oldFile) oldStream.getTracks().forEach(t => t.stop());
+  },
+
+  meter(){
+    const segL = document.querySelectorAll('#mL .seg'), segR = document.querySelectorAll('#mR .seg');
+    const buf = new Float32Array(1024);
+    const peakDb = an => {
+      if (!an) return -100;
+      an.getFloatTimeDomainData(buf);
+      let p = 0; for (let i = 0; i < buf.length; i++){ const v = Math.abs(buf[i]); if (v > p) p = v; }
+      return p > 0 ? 20 * Math.log10(p) : -100;
+    };
+    const paint = (segs, db) => {
+      const lit = Math.max(0, Math.min(20, Math.round((db + 48) / 2.4)));
+      segs.forEach((s, i) => { s.className = 'seg' + (i < lit ? (i >= 18 ? ' r' : i >= 14 ? ' y' : ' g') : ''); });
+    };
+    const hint = $('#c-hint');
+    const loop = () => {
+      if (!document.body.contains(hint)) return;
+      const l = peakDb(this.anL), r = this.mono ? l : peakDb(this.anR);
+      paint(segL, l); paint(segR, r);
+      const now = performance.now(), top = Math.max(l, r);
+      if (top > this.hold.v || now - this.hold.t > 1500){ this.hold = { v: top, t: now }; }
+      if (this.stream){
+        const v = this.hold.v;
+        let txt = 'Nivel correcto', cls = 'ok';
+        if (v < -60){ txt = 'No llega señal. Revisa el cable y la fuente elegida.'; cls = 'bad'; }
+        else if (v < -30){ txt = 'Señal muy baja. Sube la ganancia de la mesa o la interfaz.'; cls = 'warn'; }
+        else if (v > -2.5){ txt = 'Saturando. Baja un poco la ganancia.'; cls = 'bad'; }
+        if (hint.textContent !== txt){ hint.textContent = txt; hint.className = 'hint ' + cls; }
+      }
+      this.raf = requestAnimationFrame(loop);
+    };
+    loop();
+  },
+
+  // ----- directo -----
+  async goLive(){
+    const a = this.artist;
+    if (!this.stream){ const ok = await this.allow(); if (!ok) return; }
+    this.ensureCtx();
+    if (this.fileEl) this.fileEl.play().catch(() => {});
+    this.state = 'wait'; this.paintLive();
+    try { await need('peer'); } catch(e){ this.state = ''; this.paintLive(); this.banner('No se pudo cargar el sistema de conexión. Revisa internet y vuelve a pulsar.'); return; }
+    const peer = new Peer(peerIdFor(a.code), { debug:1 });
+    this.peer = peer;
+    peer.on('open', () => {
+      if (this.live) return;
+      this.live = true; this.t0 = Date.now(); this.state = 'live';
+      keepAwake(true); this.banner(''); this.paintLive();
+      clearInterval(this.tick); this.tick = setInterval(() => this.paintLive(), 1000);
+    });
+    peer.on('connection', c => this.onConn(c));
+    peer.on('disconnected', () => { if (this.live && !peer.destroyed) setTimeout(() => { try { peer.reconnect(); } catch(e){} }, 1200); });
+    peer.on('error', e => {
+      if (e.type === 'peer-unavailable') return;
+      if (e.type === 'unavailable-id'){ this.stopPeer(); this.banner('Tu código ya está en directo en otra pestaña o dispositivo. Ciérralo y vuelve a pulsar.'); return; }
+      if (e.type === 'browser-incompatible'){ this.stopPeer(); this.banner('Este navegador no permite emitir. Usa Chrome o Safari actualizados.'); return; }
+      if (!this.live){ this.stopPeer(); this.banner('No se pudo conectar. Revisa internet y vuelve a pulsar "Ir en directo".'); }
+      else this.banner('Conexión inestable. Intentando mantener el directo…');
+    });
+  },
+
+  onConn(c){
+    this.conns.set(c.peer, c);
+    c.on('open', () => { const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, web:a.web } }); });
+    c.on('data', d => {
+      if (!d) return;
+      if (d.t === 'listen') this.startCall(c);
+      if (d.t === 'stop') this.dropCall(c.peer);
+      if (d.t === 'react') this.onReact(c.peer, d.e);
+    });
+    c.on('close', () => { this.conns.delete(c.peer); this.dropCall(c.peer); });
+    c.on('error', () => {});
+  },
+
+  snapshot(){ return { t:'state', n:this.calls.size, now:this.nowPlaying }; },
+  broadcast(msg){ this.conns.forEach(c => { if (c.open){ try { c.send(msg); } catch(e){} } }); },
+  notifyCount(){ if (this.calls.size !== this.sentN){ this.sentN = this.calls.size; this.broadcast(this.snapshot()); } },
+
+  onReact(pid, e){
+    if (!REACTIONS.includes(e)) return;
+    const now = Date.now();
+    if (now - (this.lastReact.get(pid) || 0) < 600) return;
+    this.lastReact.set(pid, now);
+    this.tally[e] = (this.tally[e] || 0) + 1;
+    floatEmoji(e); this.paintTally();
+    this.conns.forEach((c, id) => { if (id !== pid && c.open){ try { c.send({ t:'react', e }); } catch(err){} } });
+  },
+  paintTally(){
+    const el = $('#c-tally'); if (!el) return;
+    el.innerHTML = REACTIONS.filter(e => this.tally[e]).map(e => `<span>${e} ${this.tally[e]}</span>`).join('');
+  },
+
+  startCall(c){
+    if (this.calls.has(c.peer)) this.dropCall(c.peer);
+    if (this.calls.size >= MAX_LISTENERS){ try { c.send({ t:'full' }); } catch(e){} return; }
+    const call = this.peer.call(c.peer, this.stream, { sdpTransform: opusStereo });
+    if (!call) return;
+    this.calls.set(c.peer, call);
+    const gone = () => { if (this.calls.get(c.peer) === call){ this.calls.delete(c.peer); this.paintLive(); this.notifyCount(); } };
+    call.on('close', gone); call.on('error', gone);
+    this.paintLive(); this.notifyCount();
+  },
+
+  dropCall(pid){
+    const call = this.calls.get(pid);
+    if (call){ this.calls.delete(pid); try { call.close(); } catch(e){} }
+    this.paintLive(); this.notifyCount();
+  },
+
+  askEnd(){
+    const b = $('#c-end');
+    if (Date.now() - this.endArmed < 3000){ this.endLive(); return; }
+    this.endArmed = Date.now(); b.textContent = 'Toca otra vez para terminar';
+    setTimeout(() => { if (b.isConnected && this.live) b.textContent = 'Terminar directo'; }, 3000);
+  },
+
+  endLive(){
+    this.conns.forEach(c => { try { c.send({ t:'end' }); } catch(e){} });
+    setTimeout(() => this.stopPeer(), 400);
+    if (this.fileEl) this.fileEl.pause();
+  },
+
+  stopPeer(){
+    this.calls.forEach(c => { try { c.close(); } catch(e){} }); this.calls.clear();
+    this.conns.forEach(c => { try { c.close(); } catch(e){} }); this.conns.clear();
+    if (this.peer){ try { this.peer.destroy(); } catch(e){} }
+    this.peer = null; this.live = false; this.state = ''; this.endArmed = 0; this.tally = {}; this.sentN = -1; this.lastReact.clear(); this.paintTally();
+    clearInterval(this.tick); keepAwake(false); this.paintLive();
+  },
+
+  paintLive(){
+    const btn = $('#c-live'), meta = $('#c-meta'), end = $('#c-end');
+    if (!btn) return;
+    btn.className = 'live-btn' + (this.state === 'live' ? ' on' : this.state === 'wait' ? ' wait' : '');
+    if (this.state === 'live'){
+      const s = Math.floor((Date.now() - this.t0) / 1000);
+      const t = [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':');
+      btn.innerHTML = `En directo<span class="timer">${t}</span>`;
+      btn.setAttribute('aria-label', 'En directo, ' + t);
+      const n = this.calls.size;
+      meta.innerHTML = `<b>${n}</b>${n === 1 ? 'oyente' : 'oyentes'}${n >= MAX_LISTENERS ? ' · aforo del piloto completo' : ''}`;
+      end.hidden = false;
+      if (Date.now() - this.endArmed >= 3000) end.textContent = 'Terminar directo';
+    } else if (this.state === 'wait'){
+      btn.textContent = 'Conectando…'; meta.textContent = 'Preparando tu directo.'; end.hidden = true;
+    } else {
+      btn.textContent = 'Ir en directo'; btn.removeAttribute('aria-label');
+      meta.textContent = 'Cuando pulses, quien escanee tu QR te escuchará.'; end.hidden = true;
+    }
+  }
+};
+window.addEventListener('beforeunload', e => { if (Console.live){ e.preventDefault(); e.returnValue = ''; } });
+
+// =========================================================================
+// PÁGINA DEL OYENTE
+// =========================================================================
+const Listener = {
+  code:'', pid:'', profile:null, status:'checking', peer:null, conn:null, call:null,
+  want:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, statsT:0, techOpen:false, last:null,
+  audio:null, n:0, now:'', lastSent:0, shareMsg:'',
+
+  start(code){
+    this.code = code; this.pid = peerIdFor(code);
+    this.profile = saved().find(s => s.code === code) || cleanProfile({}, code);
+    this.audio = document.createElement('audio'); this.audio.setAttribute('playsinline', ''); this.audio.autoplay = true;
+    document.body.appendChild(this.audio);
+    if (load(LS.awake, null) === null) store(LS.awake, true);
+    this.render();
+    need('peer').then(() => this.initPeer()).catch(() => this.set('neterror'));
+    window.addEventListener('online', () => this.tryConnect());
+  },
+
+  initPeer(){
+    const p = new Peer(); this.peer = p;
+    p.on('open', () => this.tryConnect());
+    p.on('call', call => this.onCall(call));
+    p.on('disconnected', () => { if (!p.destroyed) setTimeout(() => { try { p.reconnect(); } catch(e){} }, 1500); });
+    p.on('error', e => {
+      if (e.type === 'peer-unavailable'){ this.off(); return; }
+      if (['network','server-error','socket-error','socket-closed'].includes(e.type)){ this.set('neterror'); this.retry(8000); }
+    });
+  },
+
+  tryConnect(){
+    clearTimeout(this.retryT);
+    if (!this.peer || this.peer.destroyed || !this.peer.open) return;
+    if (this.conn && this.conn.open) return;
+    const c = this.peer.connect(this.pid, { reliable:true }); this.conn = c;
+    const to = setTimeout(() => { if (!c.open){ try { c.close(); } catch(e){} this.off(); } }, 7000);
+    c.on('open', () => clearTimeout(to));
+    c.on('data', d => this.onData(d));
+    c.on('close', () => {
+      clearTimeout(to);
+      if (this.conn !== c) return;
+      this.conn = null;
+      if (this.status === 'live'){ this.stopAudio(false); this.set('ended'); }
+      this.retry(10000);
+    });
+  },
+
+  off(){ if (this.status !== 'ended') this.set('off'); this.retry(10000); },
+  retry(ms){ clearTimeout(this.retryT); this.retryT = setTimeout(() => this.tryConnect(), ms); },
+
+  onData(d){
+    if (!d) return;
+    if (d.t === 'hello'){
+      const was = this.status;
+      this.profile = cleanProfile(d.profile, this.code);
+      this.n = Number(d.n) || 0; this.now = clip(d.now, 60);
+      if (isSaved(this.code)) upsertSaved(this.profile);
+      if ((was === 'off' || was === 'ended') && navigator.vibrate) navigator.vibrate([120, 60, 120]);
+      this.set('live');
+      if (this.want) this.conn.send({ t:'listen' });
+    }
+    if (d.t === 'state'){ this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.paintMeta(); }
+    if (d.t === 'react') floatEmoji(d.e);
+    if (d.t === 'full'){ this.want = false; this.connecting = false; this.set('full'); }
+    if (d.t === 'end'){ this.stopAudio(false); this.set('ended'); }
+  },
+
+  listen(){
+    // Desbloqueo de audio dentro del toque del usuario (necesario en iPhone).
+    try { const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC(); ctx.resume(); setTimeout(() => ctx.close(), 500); } catch(e){}
+    this.audio.play().catch(() => {});
+    this.want = true; this.connecting = true; this.needTap = false;
+    if (load(LS.awake, true)) keepAwake(true);
+    this.render();
+    if (this.conn && this.conn.open) this.conn.send({ t:'listen' }); else this.tryConnect();
+    clearTimeout(this.noAudioT);
+    this.noAudioT = setTimeout(() => {
+      if (this.connecting && !this.playing){ this.connecting = false; this.want = false; this.flash = 'No llega el audio. Comprueba tu conexión y vuelve a pulsar.'; this.render(); }
+    }, 15000);
+  },
+
+  onCall(call){
+    if (this.call){ try { this.call.close(); } catch(e){} }
+    this.call = call;
+    call.answer(undefined, { sdpTransform: opusStereo });
+    call.on('stream', s => {
+      this.audio.srcObject = s;
+      const pr = this.audio.play();
+      if (pr) pr.then(() => { this.needTap = false; this.render(); }).catch(() => { this.needTap = true; this.render(); });
+      this.playing = true; this.connecting = false; this.flash = '';
+      clearTimeout(this.noAudioT);
+      this.media(); this.startStats(); this.render();
+    });
+    call.on('close', () => { if (this.call === call){ this.call = null; if (this.playing){ this.stopAudio(false); this.render(); } } });
+  },
+
+  stopAudio(tell = true){
+    if (tell && this.conn && this.conn.open){ try { this.conn.send({ t:'stop' }); } catch(e){} }
+    if (this.call){ const c = this.call; this.call = null; try { c.close(); } catch(e){} }
+    this.audio.pause(); this.audio.srcObject = null;
+    this.playing = false; this.want = false; this.connecting = false; this.needTap = false;
+    clearInterval(this.statsT); keepAwake(false);
+  },
+
+  media(){
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title:'En directo', artist:this.profile.name, album:'KABEL' });
+      navigator.mediaSession.setActionHandler('pause', () => { this.stopAudio(); this.render(); });
+      navigator.mediaSession.setActionHandler('stop', () => { this.stopAudio(); this.render(); });
+    } catch(e){}
+  },
+
+  paintMeta(){
+    const n = $('#l-n'); if (n) n.textContent = this.n + ' escuchando';
+    const box = $('#l-now');
+    if (box){ box.hidden = !(this.status === 'live' && this.now); const v = $('#l-now-v'); if (v) v.textContent = this.now; }
+  },
+
+  react(e){
+    const t = Date.now(); if (t - this.lastSent < 600) return; this.lastSent = t;
+    if (this.conn && this.conn.open){ try { this.conn.send({ t:'react', e }); } catch(err){} }
+    floatEmoji(e); if (navigator.vibrate) navigator.vibrate(12);
+  },
+
+  async share(){
+    const url = listenURL(this.code), title = this.profile.name + ' en directo · KABEL';
+    try {
+      if (navigator.share){ await navigator.share({ title, text:'Escucha el directo con tus auriculares', url }); return; }
+      await navigator.clipboard.writeText(url); this.shareMsg = 'Enlace copiado';
+    } catch(e){ if (e && e.name === 'AbortError') return; this.shareMsg = 'No se pudo compartir'; }
+    this.render(); setTimeout(() => { this.shareMsg = ''; this.render(); }, 2000);
+  },
+
+  set(s){ this.status = s; if (s !== 'live'){ this.connecting = false; } this.render(); },
+
+  // Datos para las pruebas de Leo: ruta, retraso, jitter y pérdidas.
+  startStats(){
+    clearInterval(this.statsT); this.last = null;
+    this.statsT = setInterval(async () => {
+      const pc = this.call && this.call.peerConnection; const box = $('#l-stats');
+      if (!pc || !box) return;
+      try {
+        const rep = await pc.getStats(); let inb, pair, locals = {};
+        rep.forEach(r => {
+          if (r.type === 'inbound-rtp' && r.kind === 'audio') inb = r;
+          if (r.type === 'candidate-pair' && (r.nominated || r.selected) && r.state === 'succeeded') pair = r;
+          if (r.type === 'local-candidate') locals[r.id] = r;
+        });
+        const rows = [];
+        if (pair){
+          const lc = locals[pair.localCandidateId];
+          rows.push(['Ruta', lc && lc.candidateType === 'relay' ? 'Vía relé (TURN)' : 'Directa']);
+          if (pair.currentRoundTripTime != null) rows.push(['Retraso de red (ida y vuelta)', Math.round(pair.currentRoundTripTime * 1000) + ' ms']);
+        }
+        if (inb){
+          rows.push(['Variación (jitter)', Math.round((inb.jitter || 0) * 1000) + ' ms']);
+          const lost = inb.packetsLost || 0, got = inb.packetsReceived || 0;
+          rows.push(['Paquetes perdidos', lost + ' (' + (got ? (100 * lost / (lost + got)).toFixed(1) : '0.0') + ' %)']);
+          if (this.last){ const kbps = ((inb.bytesReceived - this.last.b) * 8) / ((inb.timestamp - this.last.t)); rows.push(['Calidad recibida', Math.round(kbps) + ' kbps']); }
+          this.last = { b: inb.bytesReceived, t: inb.timestamp };
+        }
+        box.innerHTML = rows.map(r => `<p>${esc(r[0])}: <b>${esc(r[1])}</b></p>`).join('') || '<p>Midiendo…</p>';
+      } catch(e){}
+    }, 2000);
+  },
+
+  render(){
+    const p = this.profile, st = this.status;
+    const links = [['Instagram', p.ig], ['YouTube', p.yt], ['Web', p.web]].filter(l => l[1]);
+    const statusTxt = { checking:'Buscando el directo…', live:'En directo ahora', off:'Ahora no está en directo', ended:'El directo ha terminado', full:'Aforo completo', neterror:'Sin conexión a internet' }[st];
+    const svgPlay = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>';
+    const svgStop = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
+
+    let control, sub;
+    if (this.playing){
+      control = this.needTap
+        ? `<button class="play" id="l-tap" type="button" aria-label="Activar sonido">${svgPlay}</button>`
+        : `<button class="play stop" id="l-stop" type="button" aria-label="Dejar de escuchar">${svgStop}</button>`;
+      sub = this.needTap ? 'Toca para activar el sonido.' : 'Estás escuchando en directo. Puedes alejarte: el sonido llega por internet.';
+    } else if (this.connecting){
+      control = `<div class="spin" role="status" aria-label="Conectando"></div>`; sub = 'Conectando…';
+    } else {
+      control = `<button class="play" id="l-play" type="button" aria-label="Escuchar" ${st === 'live' ? '' : 'disabled'}>${svgPlay}</button>`;
+      sub = this.flash || ({
+        checking:'Un momento…',
+        live:'Conecta tus auriculares y pulsa para escuchar.',
+        off:'Deja esta página abierta: se activará sola cuando empiece.',
+        ended:'Gracias por escuchar. Esta página se activará sola en su próximo directo.',
+        full:'El piloto admite 25 oyentes a la vez. Vuelve a intentarlo en unos minutos.',
+        neterror:'Revisa tu conexión. Seguimos intentándolo.'
+      }[st]);
+    }
+
+    app.innerHTML = `
+    <div class="wrap">
+      <a class="brand" href="./">KABEL</a>
+      <section class="artist">
+        <span class="mono xl">${esc(initial(p.name))}</span>
+        <h1>${esc(p.name)}</h1>
+        ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}
+        ${links.length ? `<div class="chips">${links.map(l => `<a class="chip" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]}</a>`).join('')}</div>` : ''}
+      </section>
+      <div class="status ${st === 'live' ? 'live' : ''}" role="status"><span class="dot"></span>${statusTxt}${st === 'live' ? ` · <span id="l-n">${this.n} escuchando</span>` : ''}</div>
+      <div class="now" id="l-now" ${st === 'live' && this.now ? '' : 'hidden'}><small>Ahora suena</small><span id="l-now-v">${esc(this.now)}</span></div>
+      <section class="player">
+        ${control}
+        ${this.playing && !this.needTap ? '<div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>' : ''}
+        <p class="sub">${esc(sub)}</p>
+        ${this.playing && !this.needTap ? `<div class="react-bar">${REACTIONS.map(e => `<button class="react" type="button" data-r="${e}" aria-label="Enviar ${e} al artista">${e}</button>`).join('')}</div>` : ''}
+      </section>
+      <div class="row2">
+        <button class="btn ghost" id="l-save" type="button">${isSaved(this.code) ? 'Guardado ✓' : 'Guardar artista'}</button>
+        <button class="btn ghost" id="l-share" type="button">${this.shareMsg || 'Compartir'}</button>
+      </div>
+      <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>Mantener la pantalla encendida mientras escuchas. En algunos iPhone el sonido se corta al bloquearla.</span></label>
+      <details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
+        <div class="body stats" id="l-stats">${this.playing ? '<p>Midiendo…</p>' : '<p>Aparecerán cuando empieces a escuchar.</p>'}</div></details>
+    </div>`;
+
+    const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+    on('#l-play', () => { this.flash = ''; this.listen(); });
+    on('#l-stop', () => { this.stopAudio(); this.render(); });
+    on('#l-tap', () => { this.audio.play().then(() => { this.needTap = false; this.render(); }).catch(() => {}); });
+    on('#l-share', () => this.share());
+    document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => this.react(b.dataset.r));
+    on('#l-save', () => { if (isSaved(this.code)) removeSaved(this.code); else upsertSaved(this.profile); this.render(); });
+    $('#l-awake').onchange = e => { store(LS.awake, e.target.checked); if (this.playing) keepAwake(e.target.checked); };
+    $('#l-tech').ontoggle = e => { this.techOpen = e.target.open; };
+  }
+};
+
+// =========================================================================
+// RUTAS
+// =========================================================================
+const params = new URLSearchParams(location.search);
+const listenCode = (params.get('a') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+
+function route(){
+  if (listenCode) return;
+  const h = location.hash.replace('#', '');
+  if (Console.live && h !== 'consola'){ location.hash = 'consola'; return; }
+  if (h === 'perfil') Profile.render();
+  else if (h === 'consola') load(LS.artist, null) ? Console.render() : Profile.render();
+  else Home.render();
+  window.scrollTo(0, 0);
+}
+
+if (listenCode) Listener.start(listenCode);
+else { window.addEventListener('hashchange', route); route(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>KABEL · Directo a tus auriculares</title>
+<meta name="description" content="Escanea el QR del artista y escucha su directo en tu móvil, con tus auriculares. Sin app, sin cuenta, sin grabaciones.">
+<meta property="og:title" content="KABEL · Directo a tus auriculares">
+<meta property="og:description" content="Tu música, tus auriculares, cero cola para alquilar cascos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,100,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000; --ink:#EDEEE6; --dim:#8A8D84; --line:#262821; --panel:#0B0C09;
+    --lime:#C8F03C; --red:#FF4B2B;
+    --wide:125%;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  :focus-visible{outline:3px solid var(--lime);outline-offset:3px;border-radius:6px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  h1,h2,h3{margin:0;font-weight:900;font-stretch:var(--wide);line-height:.98}
+  p{margin:0}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:10;background:rgba(0,0,0,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:24px;height:64px}
+  .logo{font-weight:900;font-stretch:var(--wide);font-size:21px;text-decoration:none;letter-spacing:.01em}
+  .navlinks{display:flex;gap:22px;margin-left:auto;font-size:15px}
+  .navlinks a{text-decoration:none;color:var(--dim)}
+  .navlinks a:hover{color:var(--ink)}
+  .langs{display:flex;border:1.5px solid var(--line);border-radius:30px;overflow:hidden}
+  .langs button{background:none;border:0;color:var(--dim);font:inherit;font-size:13px;font-weight:700;padding:6px 10px;cursor:pointer}
+  .langs button[aria-pressed="true"]{background:var(--ink);color:#000}
+  .btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border-radius:14px;font-weight:700;font-size:16px;text-decoration:none;border:1.5px solid transparent;cursor:pointer;font-family:inherit}
+  .btn.primary{background:var(--lime);color:#000}
+  .btn.ghost{border-color:var(--line);color:var(--ink);background:transparent}
+  .btn.sm{min-height:40px;padding:0 16px;font-size:14px;border-radius:10px}
+  @media(max-width:760px){ .navlinks{display:none} nav .btn.sm{display:none} .langs{margin-left:auto} }
+
+  /* hero */
+  .hero{padding:72px 0 40px;position:relative;overflow:hidden}
+  .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+  .hero h1{font-size:clamp(42px,6.6vw,82px);letter-spacing:-.01em}
+  .hero .slogan{color:var(--lime);font-style:italic;font-weight:500;font-size:clamp(19px,2.2vw,24px);margin-top:24px;max-width:26ch;line-height:1.3}
+  .hero .lead{color:var(--dim);margin-top:18px;max-width:46ch}
+  .hero .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+  @media(max-width:860px){ .hero .wrap{grid-template-columns:1fr} .hero{padding-top:48px} }
+
+  /* the cable: one orchestrated moment */
+  .scene{position:relative;height:520px;width:100%;max-width:440px;margin-left:auto}
+  .scene svg.cable{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .cable .base{fill:none;stroke:#1C1E18;stroke-width:6;stroke-linecap:round}
+  .cable .pulse{fill:none;stroke:var(--lime);stroke-width:6;stroke-linecap:round;stroke-dasharray:70 900;animation:flow 2.6s linear infinite}
+  .cable .pulse.p2{animation-delay:-1.3s}
+  @keyframes flow{from{stroke-dashoffset:970}to{stroke-dashoffset:0}}
+  .phone{position:absolute;right:0;top:40px;width:236px;height:460px;border-radius:36px;background:#0B0C09;border:2px solid #2E3128;padding:20px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 30px 80px rgba(200,240,60,.08)}
+  .phone .notch{width:70px;height:6px;border-radius:6px;background:#22241E;margin-bottom:8px}
+  .phone .av{flex:none;width:76px;height:76px;border-radius:50%;background:var(--lime);color:#000;display:grid;place-items:center;font-weight:900;font-stretch:125%;font-size:32px;margin-top:6px}
+  .phone .nm{font-weight:900;font-stretch:118%;font-size:21px}
+  .phone .bi{font-size:12px;color:var(--dim);text-align:center}
+  .phone .st{white-space:nowrap;font-size:12px;font-weight:700;color:var(--red);display:flex;align-items:center;gap:6px}
+  .phone .st::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+  .phone .now{font-size:12px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;text-align:center;width:100%}
+  .phone .now small{display:block;color:var(--dim);font-size:10px}
+  .phone .play{flex:none;width:96px;height:96px;border-radius:50%;border:3px solid var(--lime);display:grid;place-items:center;margin-top:6px}
+  .phone .play i{width:24px;height:24px;background:var(--lime);border-radius:3px}
+  .phone .rx{display:flex;gap:8px;margin-top:auto}
+  .phone .rx span{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:17px}
+  .deck{position:absolute;left:0;bottom:10px;width:150px;height:96px;border-radius:14px;border:2px solid #2E3128;background:#0B0C09;display:flex;align-items:center;justify-content:center;gap:12px}
+  .deck i{width:46px;height:46px;border-radius:50%;border:2px solid #3A3D33;display:block;position:relative}
+  .deck i::after{content:'';position:absolute;inset:16px;border-radius:50%;background:var(--lime)}
+  .deck b{position:absolute;top:-26px;left:0;font-size:12px;color:var(--dim);font-weight:500}
+  @keyframes blink{50%{opacity:.25}}
+  @media(max-width:860px){ .scene{margin:0 auto} }
+  @media(max-width:420px){ .scene{height:480px} .deck{width:128px;bottom:24px} .phone{width:206px;height:430px;top:20px} .phone .play{width:80px;height:80px} .phone .st{font-size:11px} .phone .av{width:64px;height:64px;font-size:27px} }
+
+  /* manifesto */
+  .manifesto{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:56px 0}
+  .manifesto p{font-weight:900;font-stretch:var(--wide);font-size:clamp(28px,4.4vw,54px);line-height:1.04;max-width:20ch}
+  .manifesto p span{color:var(--dim)}
+
+  section.block{padding:96px 0}
+  .sh{font-size:clamp(32px,4.4vw,52px);max-width:16ch}
+  .sub{color:var(--dim);margin-top:16px;max-width:52ch}
+
+  /* steps: a real sequence */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:56px;counter-reset:s}
+  .step{border-top:2px solid var(--lime);padding-top:22px}
+  .step .n{font-weight:900;font-stretch:var(--wide);font-size:15px;color:var(--lime)}
+  .step h3{font-size:24px;margin:10px 0 10px;font-stretch:112%}
+  .step p{color:var(--dim)}
+  @media(max-width:860px){ .steps{grid-template-columns:1fr;gap:28px} }
+
+  /* artists */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+  @media(max-width:860px){ .split{grid-template-columns:1fr;gap:32px} }
+  .feat{display:flex;flex-direction:column}
+  .feat div{padding:22px 0;border-bottom:1px solid var(--line)}
+  .feat div:first-child{border-top:1px solid var(--line)}
+  .feat h3{font-size:19px;font-stretch:108%;font-weight:800;margin-bottom:6px;line-height:1.2}
+  .feat p{color:var(--dim);font-size:16px}
+  .rig{margin-top:36px;background:var(--panel);border:1.5px solid var(--line);border-radius:18px;padding:22px}
+  .rig h3{font-size:16px;font-stretch:100%;font-weight:700;margin-bottom:14px}
+  .chain{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:14px}
+  .chain span{border:1.5px solid var(--line);border-radius:30px;padding:7px 12px}
+  .chain span.k{border-color:var(--lime);color:var(--lime)}
+  .chain em{color:var(--dim);font-style:normal}
+
+  /* spaces */
+  .spaces{background:var(--lime);color:#000}
+  .spaces .sub{color:#2B3310}
+  .places{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:48px;border-top:2px solid #000}
+  .places div{padding:22px 20px 26px 0;border-bottom:1px solid rgba(0,0,0,.25)}
+  .places h3{font-size:21px;font-stretch:112%;margin-bottom:6px}
+  .places p{font-size:15px;color:#2B3310}
+  @media(max-width:860px){ .places{grid-template-columns:1fr 1fr} }
+  @media(max-width:520px){ .places{grid-template-columns:1fr} }
+
+  /* not */
+  .nots{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:48px}
+  .nots div{border:1.5px solid var(--line);border-radius:18px;padding:22px}
+  .nots b{display:block;font-weight:900;font-stretch:var(--wide);font-size:30px;color:var(--red);line-height:1;margin-bottom:12px}
+  .nots p{color:var(--dim);font-size:15px}
+  .nots h3{font-size:18px;font-stretch:108%;margin-bottom:6px;line-height:1.2}
+  @media(max-width:860px){ .nots{grid-template-columns:1fr 1fr} }
+  @media(max-width:520px){ .nots{grid-template-columns:1fr} }
+
+  /* cta */
+  .final{padding:110px 0;text-align:left}
+  .final h2{font-size:clamp(38px,6vw,76px);max-width:14ch}
+  .final .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}
+  footer{border-top:1px solid var(--line);padding:28px 0 calc(28px + env(safe-area-inset-bottom));color:var(--dim);font-size:14px}
+  footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .cable .pulse{animation:none;stroke-dasharray:none;opacity:.35}
+    .phone .st::before{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<nav aria-label="Principal">
+  <div class="wrap">
+    <a class="logo" href="#top">KABEL</a>
+    <div class="navlinks">
+      <a href="#como" data-i="nav.how">Cómo funciona</a>
+      <a href="#artistas" data-i="nav.artists">Artistas</a>
+      <a href="#espacios" data-i="nav.spaces">Espacios</a>
+    </div>
+    <div class="langs" role="group" aria-label="Idioma">
+      <button type="button" data-lang="es" aria-pressed="true">ES</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="da" aria-pressed="false">DA</button>
+    </div>
+    <a class="btn primary sm" href="app/" data-i="nav.cta">Probar</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <h1 data-i="hero.h1">Escanea. Enchufa tus auriculares. Estás dentro.</h1>
+      <p class="slogan" data-i="hero.slogan">Tu música, tus auriculares, cero cola para alquilar cascos.</p>
+      <p class="lead" data-i="hero.lead">Kabel lleva el directo del DJ o del músico que tienes delante a tu móvil. Sin app, sin cuenta, sin altavoces que molesten a nadie.</p>
+      <div class="ctas">
+        <a class="btn primary" href="app/" data-i="hero.cta1">Probar el prototipo</a>
+        <a class="btn ghost" href="#artistas" data-i="hero.cta2">Soy artista</a>
+      </div>
+    </div>
+    <div class="scene" aria-hidden="true">
+      <svg class="cable" viewBox="0 0 440 520" preserveAspectRatio="none">
+        <path class="base" d="M75 414 C 75 330, 130 330, 206 330"/>
+        <path class="pulse" d="M75 414 C 75 330, 130 330, 206 330"/>
+        <path class="pulse p2" d="M75 414 C 75 330, 130 330, 206 330"/>
+      </svg>
+      <div class="deck"><i></i><i></i><b data-i="hero.deck">La mesa del DJ</b></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="av">N</div>
+        <div class="nm">DJ Nova</div>
+        <div class="bi" data-i="mock.bio">Techno oscuro desde Copenhague</div>
+        <div class="st" data-i="mock.live">En directo · 38 escuchando</div>
+        <div class="now"><small data-i="mock.now">Ahora suena</small>Warehouse set</div>
+        <div class="play"><i></i></div>
+        <div class="rx"><span>🔥</span><span>🙌</span><span>❤️</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="manifesto">
+  <div class="wrap"><p data-i-html="man.p">Solo en directo. <span>Nada se graba.</span> Si no estabas, no lo oíste.</p></div>
+</section>
+
+<section class="block" id="como">
+  <div class="wrap">
+    <h2 class="sh" data-i="how.h2">Tres pasos, ninguna descarga</h2>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><h3 data-i="how.s1.h">El artista pulsa en directo</h3><p data-i="how.s1.p">Conecta su mesa, su portátil o su instrumento al navegador y pulsa un botón. Ya está emitiendo.</p></div>
+      <div class="step"><span class="n">2</span><h3 data-i="how.s2.h">Escaneas su QR</h3><p data-i="how.s2.p">La cámara del móvil abre una web ligera con su perfil. No hay que instalar nada ni crear cuenta.</p></div>
+      <div class="step"><span class="n">3</span><h3 data-i="how.s3.h">Escuchas con tus auriculares</h3><p data-i="how.s3.p">El sonido llega por internet. Puedes alejarte de la cabina y seguir escuchando.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="artistas" style="padding-top:0">
+  <div class="wrap split">
+    <div>
+      <h2 class="sh" data-i="art.h2">Para artistas que tocan en directo</h2>
+      <p class="sub" data-i="art.sub">Tu perfil es tu tarjeta: nombre, una línea sobre ti y tus redes. El protagonista eres tú tocando, no la app.</p>
+      <div class="rig">
+        <h3 data-i="art.rig">Así entra tu sonido en Kabel</h3>
+        <div class="chain"><span data-i="art.c1">Mesa, controlador o instrumento</span><em>→</em><span data-i="art.c2">Interfaz de audio</span><em>→</em><span class="k" data-i="art.c3">Kabel en el navegador</span><em>→</em><span data-i="art.c4">Tu público</span></div>
+      </div>
+    </div>
+    <div class="feat">
+      <div><h3 data-i="art.f1.h">Un QR para siempre</h3><p data-i="art.f1.p">Imprímelo una vez. Sirve para cada directo, aunque cambies tu perfil.</p></div>
+      <div><h3 data-i="art.f2.h">Tu público te guarda</h3><p data-i="art.f2.p">Quien te guarda ve cuándo vuelves a estar en directo y te encuentra a un toque.</p></div>
+      <div><h3 data-i="art.f3.h">Reacciones en vivo</h3><p data-i="art.f3.p">🔥 🙌 ❤️ llegan a tu pantalla mientras tocas. Sabes en el momento si la pista funciona.</p></div>
+      <div><h3 data-i="art.f4.h">"Ahora suena", si quieres</h3><p data-i="art.f4.p">Escribe el tema o el estilo y tus oyentes lo ven bajo tu nombre.</p></div>
+      <div><h3 data-i="art.f5.h">Modo cabina</h3><p data-i="art.f5.p">El QR a pantalla completa, con el número de oyentes en vivo, para la tablet de la cabina.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block spaces" id="espacios">
+  <div class="wrap">
+    <h2 class="sh" data-i="sp.h2">Música donde un altavoz molestaría</h2>
+    <p class="sub" data-i="sp.sub">Para espacios con límites de ruido o con gente que no ha venido a bailar. Quien quiere, escucha. Quien no, ni se entera.</p>
+    <div class="places">
+      <div><h3 data-i="sp.1.h">Aeropuertos y estaciones</h3><p data-i="sp.1.p">Un directo en la terminal sin llenar la sala de ruido.</p></div>
+      <div><h3 data-i="sp.2.h">Hoteles y rooftops</h3><p data-i="sp.2.p">Sesiones en el lobby o la terraza, también fuera de horario.</p></div>
+      <div><h3 data-i="sp.3.h">Gimnasios y clases</h3><p data-i="sp.3.p">El instructor pone la música, cada uno su volumen.</p></div>
+      <div><h3 data-i="sp.4.h">Festivales y afters</h3><p data-i="sp.4.p">Una segunda pista en silencio, sin alquilar ni repartir cascos.</p></div>
+      <div><h3 data-i="sp.5.h">Músicos de calle</h3><p data-i="sp.5.p">El QR en la funda de la guitarra. El público se lo lleva a casa.</p></div>
+      <div><h3 data-i="sp.6.h">Fuera del local</h3><p data-i="sp.6.p">Quien se va del sitio puede seguir escuchando hasta el último tema.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2 class="sh" data-i="not.h2">Lo que Kabel no hace</h2>
+    <div class="nots">
+      <div><b>0</b><h3 data-i="not.1.h">Apps que instalar</h3><p data-i="not.1.p">Funciona en el navegador del móvil.</p></div>
+      <div><b>0</b><h3 data-i="not.2.h">Cuentas de oyente</h3><p data-i="not.2.p">Tus artistas guardados viven en tu móvil.</p></div>
+      <div><b>0</b><h3 data-i="not.3.h">Grabaciones</h3><p data-i="not.3.p">No guardamos música ni sesiones. Solo pasa por el cable.</p></div>
+      <div><b>0</b><h3 data-i="not.4.h">Ubicación</h3><p data-i="not.4.p">No usamos GPS ni sabemos dónde estás.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 data-i="cta.h2">¿Tocas este finde? Pruébalo.</h2>
+    <p class="sub" data-i="cta.sub">Prototipo abierto: crea tu perfil, conecta tu equipo y emite para hasta 25 oyentes.</p>
+    <div class="ctas">
+      <a class="btn primary" href="app/" data-i="cta.b1">Abrir el prototipo</a>
+      <a class="btn ghost" id="contact" href="#" hidden data-i="cta.b2">Escríbenos</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span data-i="foot.l">KABEL · un proyecto de YM Enterprise</span>
+    <span>Copenhagen · Gran Canaria</span>
+  </div>
+</footer>
+
+<script>
+// Correo de contacto: vacío = el botón "Escríbenos" no se muestra.
+const CONTACT_EMAIL = '';
+
+const T = {
+  en: {
+    'nav.how':'How it works','nav.artists':'Artists','nav.spaces':'Spaces','nav.cta':'Try it',
+    'hero.h1':'Scan. Plug in your headphones. You’re in.',
+    'hero.slogan':'Your music, your headphones, no queue to rent a headset.',
+    'hero.lead':'Kabel brings the live set of the DJ or musician in front of you to your phone. No app, no account, no speakers bothering anyone.',
+    'hero.cta1':'Try the prototype','hero.cta2':'I’m an artist','hero.deck':'The DJ’s deck',
+    'mock.bio':'Dark techno from Copenhagen','mock.live':'Live · 38 listening','mock.now':'Now playing',
+    'man.p':'Live only. <span>Nothing is recorded.</span> If you weren’t there, you didn’t hear it.',
+    'how.h2':'Three steps, zero downloads',
+    'how.s1.h':'The artist goes live','how.s1.p':'They plug their mixer, laptop or instrument into the browser and press one button. That’s it.',
+    'how.s2.h':'You scan their QR','how.s2.p':'Your phone camera opens a light web page with their profile. Nothing to install, no account.',
+    'how.s3.h':'You listen on your headphones','how.s3.p':'The sound travels over the internet. Walk away from the booth and keep listening.',
+    'art.h2':'For artists who play live','art.sub':'Your profile is your card: name, one line about you and your socials. The star is you playing, not the app.',
+    'art.rig':'How your sound gets into Kabel','art.c1':'Mixer, controller or instrument','art.c2':'Audio interface','art.c3':'Kabel in the browser','art.c4':'Your audience',
+    'art.f1.h':'One QR, forever','art.f1.p':'Print it once. It works for every set, even if you edit your profile.',
+    'art.f2.h':'Your audience saves you','art.f2.p':'People who save you see when you’re live again and find you in one tap.',
+    'art.f3.h':'Live reactions','art.f3.p':'🔥 🙌 ❤️ land on your screen while you play. You know right away if a track works.',
+    'art.f4.h':'"Now playing", if you want','art.f4.p':'Type the track or the style and listeners see it under your name.',
+    'art.f5.h':'Booth mode','art.f5.p':'Your QR full screen, with the live listener count, for the tablet in the booth.',
+    'sp.h2':'Music where a speaker would be too much','sp.sub':'For spaces with noise limits or people who didn’t come to dance. Whoever wants to, listens. Everyone else won’t even notice.',
+    'sp.1.h':'Airports and stations','sp.1.p':'A live set in the terminal without filling the hall with noise.',
+    'sp.2.h':'Hotels and rooftops','sp.2.p':'Sessions in the lobby or on the terrace, even after hours.',
+    'sp.3.h':'Gyms and classes','sp.3.p':'The instructor plays the music, everyone picks their volume.',
+    'sp.4.h':'Festivals and afterparties','sp.4.p':'A second, silent stage without renting or handing out headsets.',
+    'sp.5.h':'Street musicians','sp.5.p':'The QR on the guitar case. The audience takes you home.',
+    'sp.6.h':'Beyond the venue','sp.6.p':'Leave the place and keep listening until the last track.',
+    'not.h2':'What Kabel doesn’t do',
+    'not.1.h':'Apps to install','not.1.p':'It runs in your phone’s browser.',
+    'not.2.h':'Listener accounts','not.2.p':'Your saved artists live on your phone.',
+    'not.3.h':'Recordings','not.3.p':'We don’t store music or sets. It just passes through the cable.',
+    'not.4.h':'Location','not.4.p':'No GPS. We don’t know where you are.',
+    'cta.h2':'Playing this weekend? Try it.','cta.sub':'Open prototype: create your profile, plug in your gear and stream to up to 25 listeners.',
+    'cta.b1':'Open the prototype','cta.b2':'Write to us','foot.l':'KABEL · a YM Enterprise project'
+  },
+  da: {
+    'nav.how':'Sådan virker det','nav.artists':'Kunstnere','nav.spaces':'Steder','nav.cta':'Prøv',
+    'hero.h1':'Scan. Sæt høretelefonerne i. Du er med.',
+    'hero.slogan':'Din musik, dine høretelefoner, ingen kø for at leje headset.',
+    'hero.lead':'Kabel sender det live-sæt, som DJ’en eller musikeren foran dig spiller, direkte til din telefon. Ingen app, ingen konto, ingen højttalere, der generer nogen.',
+    'hero.cta1':'Prøv prototypen','hero.cta2':'Jeg er kunstner','hero.deck':'DJ’ens mixer',
+    'mock.bio':'Mørk techno fra København','mock.live':'Live · 38 lytter','mock.now':'Spiller nu',
+    'man.p':'Kun live. <span>Intet bliver optaget.</span> Var du der ikke, hørte du det ikke.',
+    'how.h2':'Tre trin, ingen download',
+    'how.s1.h':'Kunstneren går live','how.s1.p':'Mixer, laptop eller instrument tilsluttes browseren, og der trykkes på én knap. Færdig.',
+    'how.s2.h':'Du scanner QR-koden','how.s2.p':'Telefonens kamera åbner en let webside med kunstnerens profil. Intet at installere, ingen konto.',
+    'how.s3.h':'Du lytter i dine høretelefoner','how.s3.p':'Lyden kommer over internettet. Du kan gå væk fra boden og blive ved med at lytte.',
+    'art.h2':'For kunstnere, der spiller live','art.sub':'Din profil er dit visitkort: navn, én linje om dig og dine sociale medier. Det er dig, der spiller, der er i centrum, ikke appen.',
+    'art.rig':'Sådan kommer din lyd ind i Kabel','art.c1':'Mixer, controller eller instrument','art.c2':'Lydkort','art.c3':'Kabel i browseren','art.c4':'Dit publikum',
+    'art.f1.h':'Én QR-kode, for altid','art.f1.p':'Print den én gang. Den virker til hvert sæt, også hvis du ændrer profilen.',
+    'art.f2.h':'Dit publikum gemmer dig','art.f2.p':'Dem, der gemmer dig, kan se, når du er live igen, og finder dig med ét tryk.',
+    'art.f3.h':'Reaktioner live','art.f3.p':'🔥 🙌 ❤️ dukker op på din skærm, mens du spiller. Du ved med det samme, om nummeret virker.',
+    'art.f4.h':'"Spiller nu", hvis du vil','art.f4.p':'Skriv nummeret eller stilen, så ser lytterne det under dit navn.',
+    'art.f5.h':'Bås-tilstand','art.f5.p':'QR-koden i fuld skærm med antal lyttere live, til tabletten i boden.',
+    'sp.h2':'Musik, hvor en højttaler ville være for meget','sp.sub':'Til steder med støjgrænser eller folk, der ikke er kommet for at danse. Den, der vil, lytter. Resten mærker ingenting.',
+    'sp.1.h':'Lufthavne og stationer','sp.1.p':'Et live-sæt i terminalen uden at fylde hallen med støj.',
+    'sp.2.h':'Hoteller og tagterrasser','sp.2.p':'Sessioner i lobbyen eller på terrassen, også efter lukketid.',
+    'sp.3.h':'Fitness og hold','sp.3.p':'Instruktøren spiller musikken, alle vælger selv lydstyrken.',
+    'sp.4.h':'Festivaler og afterparties','sp.4.p':'En ekstra, lydløs scene uden at leje eller dele headset ud.',
+    'sp.5.h':'Gademusikere','sp.5.p':'QR-koden på guitarkassen. Publikum tager dig med hjem.',
+    'sp.6.h':'Uden for stedet','sp.6.p':'Gå derfra og bliv ved med at lytte til sidste nummer.',
+    'not.h2':'Det gør Kabel ikke',
+    'not.1.h':'Apps at installere','not.1.p':'Det kører i telefonens browser.',
+    'not.2.h':'Lytterkonti','not.2.p':'Dine gemte kunstnere ligger på din telefon.',
+    'not.3.h':'Optagelser','not.3.p':'Vi gemmer hverken musik eller sæt. Det går bare gennem kablet.',
+    'not.4.h':'Lokation','not.4.p':'Ingen GPS. Vi ved ikke, hvor du er.',
+    'cta.h2':'Spiller du i weekenden? Prøv det.','cta.sub':'Åben prototype: opret din profil, tilslut dit udstyr og stream til op til 25 lyttere.',
+    'cta.b1':'Åbn prototypen','cta.b2':'Skriv til os','foot.l':'KABEL · et projekt fra YM Enterprise'
+  }
+};
+
+// Spanish is the text already in the page; capture it as the base dictionary.
+const ES = {};
+document.querySelectorAll('[data-i]').forEach(el => { ES[el.dataset.i] = el.textContent; });
+document.querySelectorAll('[data-i-html]').forEach(el => { ES[el.dataset.iHtml] = el.innerHTML; });
+T.es = ES;
+
+function setLang(l){
+  const d = T[l] || T.es;
+  document.querySelectorAll('[data-i]').forEach(el => { const v = d[el.dataset.i] ?? T.es[el.dataset.i]; if (v != null) el.textContent = v; });
+  document.querySelectorAll('[data-i-html]').forEach(el => { const v = d[el.dataset.iHtml] ?? T.es[el.dataset.iHtml]; if (v != null) el.innerHTML = v; });
+  document.documentElement.lang = l;
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+  try { localStorage.setItem('kabel_lang', l); } catch(e){}
+}
+document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => setLang(b.dataset.lang));
+let start = 'es';
+try { start = localStorage.getItem('kabel_lang') || ''; } catch(e){}
+if (!start){ const n = (navigator.language || 'es').slice(0,2); start = T[n] ? n : 'es'; }
+setLang(start);
+
+if (CONTACT_EMAIL){ const c = document.getElementById('contact'); c.href = 'mailto:' + CONTACT_EMAIL; c.hidden = false; }
+</script>
+</body>
+</html>

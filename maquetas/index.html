@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>KABEL · Maquetas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#000; --ink:#EDEEE6; --dim:#8A8D84; --line:#262821; --panel:#0B0C09; --lime:#C8F03C; --red:#FF4B2B; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{font-family:'Archivo',system-ui,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--lime)}
+  .wrap{max-width:1240px;margin:0 auto;padding:40px 24px 80px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:28px}
+  h1{margin:0;font-weight:900;font-stretch:125%;font-size:clamp(36px,5vw,60px);line-height:1}
+  header p{color:var(--dim);margin:10px 0 0;max-width:56ch}
+  header nav{display:flex;gap:16px;font-weight:600}
+  h2{font-weight:900;font-stretch:118%;font-size:28px;margin:64px 0 6px}
+  .lede{color:var(--dim);margin:0 0 28px;max-width:60ch}
+  .row{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+  @media(max-width:1000px){ .row{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:520px){ .row{grid-template-columns:1fr} }
+  figure{margin:0}
+  .frame{border:2px solid #2E3128;border-radius:34px;padding:8px;background:#0B0C09}
+  .frame img{display:block;width:100%;height:auto;border-radius:26px}
+  figcaption{margin-top:14px}
+  figcaption b{display:block;font-size:16px}
+  figcaption span{color:var(--dim);font-size:14px}
+  .step{color:var(--lime);font-weight:800;font-size:13px}
+  .ideas{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+  @media(max-width:820px){ .ideas{grid-template-columns:1fr} }
+  .box{border:1.5px solid var(--line);border-radius:18px;padding:22px 24px}
+  .box h3{margin:0 0 12px;font-size:18px}
+  .box.on h3{color:var(--lime)}
+  .box ul{margin:0;padding:0;list-style:none}
+  .box li{padding:10px 0;border-top:1px solid var(--line);font-size:15px}
+  .box li:first-child{border-top:0}
+  .box li b{display:block}
+  .box li span{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>KABEL · Maquetas</h1>
+      <p>Pantallas del prototipo tal como funcionan hoy, con datos de ejemplo. Primero el recorrido del artista, después el del oyente.</p>
+    </div>
+    <nav><a href="../">Landing</a><a href="../app/">Prototipo</a></nav>
+  </header>
+
+  <h2>Artista</h2>
+  <p class="lede">De cero a emitir en tres pantallas. Sin email ni contraseña: el perfil vive en su dispositivo y se puede llevar a otro con un código de recuperación.</p>
+  <div class="row">
+    <figure><div class="frame"><img src="img/a1-perfil.png" alt="Formulario para crear el perfil de artista" loading="lazy"></div>
+      <figcaption><span class="step">1</span><b>Crear perfil</b><span>Nombre, una línea y redes. Nada más.</span></figcaption></figure>
+    <figure><div class="frame"><img src="img/a2-consola.png" alt="Consola con la entrada de audio y el botón de ir en directo" loading="lazy"></div>
+      <figcaption><span class="step">2</span><b>Elegir entrada y comprobar nivel</b><span>El vúmetro avisa en palabras: sin señal, muy baja, correcto o saturando.</span></figcaption></figure>
+    <figure><div class="frame"><img src="img/a3-directo.png" alt="Consola en directo con oyentes, reacciones y ahora suena" loading="lazy"></div>
+      <figcaption><span class="step">3</span><b>En directo</b><span>Tiempo, oyentes y reacciones a la vista. Terminar pide dos toques para no cortar un set sin querer.</span></figcaption></figure>
+    <figure><div class="frame"><img src="img/a4-cabina.png" alt="Modo cabina con el QR a pantalla completa" loading="lazy"></div>
+      <figcaption><span class="step">4</span><b>Modo cabina</b><span>QR a pantalla completa con los oyentes en vivo, para la tablet de la cabina. (El QR de la imagen es de muestra.)</span></figcaption></figure>
+  </div>
+
+  <h2>Oyente</h2>
+  <p class="lede">Escanear, escuchar, guardar. Ninguna cuenta. El botón grande es lo único que hay que entender.</p>
+  <div class="row">
+    <figure><div class="frame"><img src="img/l2-perfil.png" alt="Perfil del artista en directo antes de escuchar" loading="lazy"></div>
+      <figcaption><span class="step">1</span><b>Al escanear el QR</b><span>Perfil, estado en directo, cuántos escuchan y qué suena.</span></figcaption></figure>
+    <figure><div class="frame"><img src="img/l3-escuchando.png" alt="Oyente escuchando con reacciones flotando" loading="lazy"></div>
+      <figcaption><span class="step">2</span><b>Escuchando</b><span>Tres reacciones a un toque. Las de los demás también suben por la pantalla.</span></figcaption></figure>
+    <figure><div class="frame"><img src="img/l4-terminado.png" alt="Pantalla de directo terminado" loading="lazy"></div>
+      <figcaption><span class="step">3</span><b>Fin del directo</b><span>Si la página sigue abierta, se activa sola en el próximo directo.</span></figcaption></figure>
+    <figure><div class="frame"><img src="img/l1-mis-artistas.png" alt="Lista de artistas guardados con quién está en directo" loading="lazy"></div>
+      <figcaption><span class="step">4</span><b>Tus artistas</b><span>Los guardados viven en el móvil. Al abrir, se ve quién está en directo ahora.</span></figcaption></figure>
+  </div>
+
+  <h2>Lluvia de ideas</h2>
+  <p class="lede">Lo que el equipo propuso para esta versión y qué se quedó fuera, y por qué.</p>
+  <div class="ideas">
+    <div class="box on"><h3>Aplicadas en el prototipo</h3><ul>
+      <li><b>Contador visible para el público</b><span>"18 escuchando" anima a quedarse. (Elisabeth)</span></li>
+      <li><b>Reacciones 🔥 🙌 ❤️</b><span>Feedback instantáneo al artista, sin chat ni moderación. No se guardan. (Sara)</span></li>
+      <li><b>"Ahora suena" opcional</b><span>El artista decide si lo comparte. (Sara)</span></li>
+      <li><b>Compartir el directo</b><span>Quien escucha trae a sus amigos aunque no estén en el sitio. (Elisabeth)</span></li>
+      <li><b>Modo cabina</b><span>QR enorme con oyentes en vivo para la tablet de la cabina. (Leo)</span></li>
+      <li><b>Landing en ES, EN y DA</b><span>Copenhague y Gran Canaria desde el primer día. (Elisabeth)</span></li>
+    </ul></div>
+    <div class="box"><h3>Aparcadas para después del piloto</h3><ul>
+      <li><b>Avisos push cuando un artista guardado va en directo</b><span>En iPhone exigen añadir la web a la pantalla de inicio. (Iván)</span></li>
+      <li><b>Más de 25 oyentes</b><span>Requiere el servidor de audio (LiveKit). Fase 1. (Iván, Álvaro)</span></li>
+      <li><b>Propinas al artista</b><span>Rompe el "no lucramos, somos el cable" y abre temas de pagos. (Nuria, Álvaro)</span></li>
+      <li><b>Peticiones de temas</b><span>Útil, pero añade moderación. Se valora con Kilian. (Sara)</span></li>
+      <li><b>App en inglés y danés</b><span>La landing ya lo está; la app, tras el piloto. (Elisabeth)</span></li>
+      <li><b>Estadísticas del directo para el artista</b><span>Solo totales, sin datos de oyentes. Pendiente de Nuria. (Iván)</span></li>
+    </ul></div>
+  </div>
+</div>
+</body>
+</html>
