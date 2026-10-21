@@ -179,7 +179,8 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.3';
+const VERSION = 'v2.4';
+const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
 const ICE_SERVERS = [
@@ -1084,9 +1085,9 @@ const Listener = {
       </div>
       <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>Mantener la pantalla encendida mientras escuchas. En algunos iPhone el sonido se corta al bloquearla.</span></label>
       ${(st === 'neterror' || st === 'slow') ? '<a class="btn ghost" href="#test">Probar mi conexión</a>' : ''}
-      <details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
+      ${DEBUG ? `<details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
         <div class="body stats" id="l-stats">${this.playing ? '<p>Midiendo…</p>' : '<p>Aparecerán cuando empieces a escuchar.</p>'}</div></details>
-      ${diagHTML()}
+      ${diagHTML()}` : ''}
       <p class="note">${VERSION} · <a href="#test">Probar mi conexión</a></p>
     </div>`;
     bindDiag();
@@ -1099,7 +1100,7 @@ const Listener = {
     document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => this.react(b.dataset.r));
     on('#l-save', () => { if (isSaved(this.code)) removeSaved(this.code); else upsertSaved(this.profile); this.render(); });
     $('#l-awake').onchange = e => { store(LS.awake, e.target.checked); if (this.playing) keepAwake(e.target.checked); };
-    $('#l-tech').ontoggle = e => { this.techOpen = e.target.open; };
+    if ($('#l-tech')) $('#l-tech').ontoggle = e => { this.techOpen = e.target.open; };
   }
 };
 
