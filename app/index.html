@@ -109,6 +109,10 @@
   .bio{color:var(--dim);font-size:16px;max-width:32ch}
   .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
   .chip{border:1.5px solid var(--line);border-radius:30px;padding:8px 14px;font-size:14px;font-weight:600;color:var(--ink);text-decoration:none}
+  .socials{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;width:100%}
+  .social{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 8px;border:1.5px solid var(--line);border-radius:14px;font-size:15px;font-weight:700;color:var(--ink);text-decoration:none;background:var(--panel,#0B0C09)}
+  .social:active{border-color:var(--lime)}
+  .social span{color:var(--lime)}
   .status{display:flex;align-items:center;justify-content:center;gap:9px;font-weight:700;font-size:15px;color:var(--dim)}
   .status .dot{width:10px;height:10px;border-radius:50%;background:#44473F}
   .status.live{color:var(--red)} .status.live .dot{background:var(--red);animation:blink 1.4s ease-in-out infinite}
@@ -179,7 +183,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.4';
+const VERSION = 'v2.5';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -281,7 +285,7 @@ function cleanProfile(p, code){
   p = p || {};
   return {
     code, name: String(p.name || code.split('-')[0]).slice(0,32), bio: String(p.bio || '').slice(0,90),
-    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), web: safeURL(p.web || ''), tip: safeURL(p.tip || '')
+    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), sp: safeURL(p.sp || ''), web: safeURL(p.web || ''), tip: safeURL(p.tip || '')
   };
 }
 const baseURL = () => location.href.split('#')[0].split('?')[0];
@@ -446,6 +450,8 @@ const Profile = {
         <input type="text" id="f-ig" autocomplete="off" autocapitalize="off" value="${esc(a.ig)}" placeholder="@tuusuario"></div>
       <div class="field"><label for="f-yt">YouTube (opcional)</label>
         <input type="text" id="f-yt" autocomplete="off" autocapitalize="off" value="${esc(a.yt)}" placeholder="@tucanal"></div>
+      <div class="field"><label for="f-sp">Spotify (opcional)</label>
+        <input type="url" id="f-sp" autocomplete="off" autocapitalize="off" value="${esc(a.sp)}" placeholder="open.spotify.com/artist/…"></div>
       <div class="field"><label for="f-web">Otra red o web (opcional)</label>
         <input type="url" id="f-web" autocomplete="off" autocapitalize="off" value="${esc(a.web)}" placeholder="soundcloud.com/tuusuario"></div>
       <div class="field"><label for="f-tip">Enlace para recibir donaciones (opcional)</label>
@@ -465,7 +471,7 @@ const Profile = {
       if (!name){ const e = $('#f-err'); e.textContent = 'Escribe tu nombre artístico para continuar.'; e.hidden = false; $('#f-name').focus(); return; }
       const p = {
         code: a.code || genCode(name), name, bio: bio.value.trim(),
-        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), web: normLink($('#f-web').value, 'web'), tip: normLink($('#f-tip').value, 'web')
+        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), sp: normLink($('#f-sp').value, 'web'), web: normLink($('#f-web').value, 'web'), tip: normLink($('#f-tip').value, 'web')
       };
       store(LS.artist, p);
       location.hash = 'consola';
@@ -750,7 +756,7 @@ const Console = {
 
   onConn(c){
     this.conns.set(c.peer, c); watchICE(c, 'Oyente ' + String(c.peer).slice(0, 4));
-    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, web:a.web, tip:a.tip } }); });
+    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, sp:a.sp, web:a.web, tip:a.tip } }); });
     c.on('data', d => {
       if (!d) return;
       if (d.t === 'listen'){ dlog('Artista: el oyente pulsa escuchar'); this.startCall(c); }
@@ -1035,7 +1041,7 @@ const Listener = {
 
   render(){
     const p = this.profile, st = this.status;
-    const links = [['Instagram', p.ig], ['YouTube', p.yt], ['Web', p.web]].filter(l => l[1]);
+    const links = [['Instagram', p.ig], ['YouTube', p.yt], ['Spotify', p.sp], ['Web', p.web]].filter(l => l[1]);
     const statusTxt = { checking:'Buscando el directo…', live:'En directo ahora', off:'Ahora no está en directo', ended:'El directo ha terminado', full:'Aforo completo', neterror:'Sin conexión a internet', slow:'Sin respuesta del artista' }[st];
     const svgPlay = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>';
     const svgStop = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
@@ -1068,7 +1074,7 @@ const Listener = {
         <span class="mono xl">${esc(initial(p.name))}</span>
         <h1>${esc(p.name)}</h1>
         ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}
-        ${links.length ? `<div class="chips">${links.map(l => `<a class="chip" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]}</a>`).join('')}</div>` : ''}
+        ${links.length ? `<div class="socials" style="grid-template-columns:repeat(${links.length === 4 ? 2 : links.length},1fr)">${links.map(l => `<a class="social" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]} <span aria-hidden="true">↗</span></a>`).join('')}</div>` : ''}
       </section>
       ${p.tip ? `<a class="btn ghost" id="l-tip" href="${esc(p.tip)}" target="_blank" rel="noopener noreferrer">♥ Donar al artista</a>` : ''}
       <div class="status ${st === 'live' ? 'live' : ''}" role="status"><span class="dot"></span>${statusTxt}${st === 'live' ? ` · <span id="l-n">${this.n} escuchando</span>` : ''}</div>
