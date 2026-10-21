@@ -179,7 +179,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.2';
+const VERSION = 'v2.3';
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
 const ICE_SERVERS = [
@@ -280,7 +280,7 @@ function cleanProfile(p, code){
   p = p || {};
   return {
     code, name: String(p.name || code.split('-')[0]).slice(0,32), bio: String(p.bio || '').slice(0,90),
-    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), web: safeURL(p.web || '')
+    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), web: safeURL(p.web || ''), tip: safeURL(p.tip || '')
   };
 }
 const baseURL = () => location.href.split('#')[0].split('?')[0];
@@ -447,6 +447,9 @@ const Profile = {
         <input type="text" id="f-yt" autocomplete="off" autocapitalize="off" value="${esc(a.yt)}" placeholder="@tucanal"></div>
       <div class="field"><label for="f-web">Otra red o web (opcional)</label>
         <input type="url" id="f-web" autocomplete="off" autocapitalize="off" value="${esc(a.web)}" placeholder="soundcloud.com/tuusuario"></div>
+      <div class="field"><label for="f-tip">Enlace para recibir donaciones (opcional)</label>
+        <input type="url" id="f-tip" autocomplete="off" autocapitalize="off" value="${esc(a.tip)}" placeholder="paypal.me/tuusuario">
+        <small style="color:var(--dim)">PayPal.me, Ko-fi, Revolut.me, Buy Me a Coffee… El dinero va directo a ti: Kabel no interviene en el pago.</small></div>
       <p class="err" id="f-err" hidden></p>
       <button class="btn primary" id="f-save" type="button">${editing ? 'Guardar cambios' : 'Crear perfil'}</button>
       ${editing ? `<a class="btn ghost" href="#consola">Volver a la consola</a>`
@@ -461,7 +464,7 @@ const Profile = {
       if (!name){ const e = $('#f-err'); e.textContent = 'Escribe tu nombre artístico para continuar.'; e.hidden = false; $('#f-name').focus(); return; }
       const p = {
         code: a.code || genCode(name), name, bio: bio.value.trim(),
-        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), web: normLink($('#f-web').value, 'web')
+        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), web: normLink($('#f-web').value, 'web'), tip: normLink($('#f-tip').value, 'web')
       };
       store(LS.artist, p);
       location.hash = 'consola';
@@ -746,7 +749,7 @@ const Console = {
 
   onConn(c){
     this.conns.set(c.peer, c); watchICE(c, 'Oyente ' + String(c.peer).slice(0, 4));
-    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, web:a.web } }); });
+    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, web:a.web, tip:a.tip } }); });
     c.on('data', d => {
       if (!d) return;
       if (d.t === 'listen'){ dlog('Artista: el oyente pulsa escuchar'); this.startCall(c); }
@@ -1066,6 +1069,7 @@ const Listener = {
         ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}
         ${links.length ? `<div class="chips">${links.map(l => `<a class="chip" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]}</a>`).join('')}</div>` : ''}
       </section>
+      ${p.tip ? `<a class="btn ghost" id="l-tip" href="${esc(p.tip)}" target="_blank" rel="noopener noreferrer">♥ Donar al artista</a>` : ''}
       <div class="status ${st === 'live' ? 'live' : ''}" role="status"><span class="dot"></span>${statusTxt}${st === 'live' ? ` · <span id="l-n">${this.n} escuchando</span>` : ''}</div>
       <div class="now" id="l-now" ${st === 'live' && this.now ? '' : 'hidden'}><small>Ahora suena</small><span id="l-now-v">${esc(this.now)}</span></div>
       <section class="player">
