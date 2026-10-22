@@ -113,6 +113,17 @@
   .social{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 8px;border:1.5px solid var(--line);border-radius:14px;font-size:15px;font-weight:700;color:var(--ink);text-decoration:none;background:var(--panel,#0B0C09)}
   .social:active{border-color:var(--lime)}
   .social span{color:var(--lime)}
+  .tipbox{border:1.5px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .tipbox > b{font-size:16px}
+  .amounts{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .amt{min-height:48px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-weight:700;font-size:16px;cursor:pointer}
+  .amt.on{border-color:var(--lime);background:var(--lime);color:#000}
+  .amt:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .tip-other{display:flex;gap:8px;align-items:center}
+  .tip-other input{flex:1;min-width:0;min-height:48px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-size:16px;padding:0 12px}
+  .tipbox small{color:var(--dim);font-size:13px}
+  .tipbox .warn{color:#FFB4A4}
+  .btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
   .status{display:flex;align-items:center;justify-content:center;gap:9px;font-weight:700;font-size:15px;color:var(--dim)}
   .status .dot{width:10px;height:10px;border-radius:50%;background:#44473F}
   .status.live{color:var(--red)} .status.live .dot{background:var(--red);animation:blink 1.4s ease-in-out infinite}
@@ -183,7 +194,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.5';
+const VERSION = 'v2.6';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -280,6 +291,17 @@ function normLink(v, kind){
   if (kind === 'ig') return safeURL('https://instagram.com/' + h);
   if (kind === 'yt') return safeURL('https://youtube.com/@' + h);
   return safeURL('https://' + v);
+}
+const TIP_AMOUNTS = [1, 3, 5, 10];
+function tipURL(base, amt){
+  try {
+    const u = new URL(base);
+    if (/(^|\.)paypal\.me$/i.test(u.hostname) && amt){
+      const user = u.pathname.split('/').filter(Boolean)[0];
+      if (user) return 'https://paypal.me/' + encodeURIComponent(user) + '/' + amt + 'EUR';
+    }
+    return u.href;
+  } catch(e){ return base; }
 }
 function cleanProfile(p, code){
   p = p || {};
@@ -1039,8 +1061,45 @@ const Listener = {
     }, 2000);
   },
 
+  tipAmt:5, tipOther:false, tipVal:'',
+  tipAmount(){
+    if (!this.tipOther) return this.tipAmt;
+    const v = parseFloat(String(this.tipVal).replace(',', '.'));
+    return (isFinite(v) && v >= 1) ? Math.round(v * 100) / 100 : 0;
+  },
+  tipHTML(p){
+    const a = this.tipAmount();
+    return `<section class="tipbox" aria-label="Donar al artista">
+        <b>♥ Apoya a ${esc(p.name)}</b>
+        <div class="amounts" role="group" aria-label="Importe">
+          ${TIP_AMOUNTS.map(n => `<button type="button" class="amt ${!this.tipOther && this.tipAmt === n ? 'on' : ''}" data-amt="${n}" aria-pressed="${!this.tipOther && this.tipAmt === n}">${n} €</button>`).join('')}
+          <button type="button" class="amt ${this.tipOther ? 'on' : ''}" data-amt="otro" aria-pressed="${this.tipOther}">Otro</button>
+        </div>
+        <div class="tip-other" ${this.tipOther ? '' : 'hidden'}>
+          <input id="l-amt" type="text" inputmode="decimal" autocomplete="off" placeholder="Importe en €, mínimo 1" value="${esc(this.tipVal)}" aria-label="Otro importe en euros">
+        </div>
+        <a class="btn primary" id="l-tip" target="_blank" rel="noopener noreferrer" href="${esc(tipURL(p.tip, a))}" ${a ? '' : 'aria-disabled="true"'}>${a ? 'Donar ' + String(a).replace('.', ',') + ' €' : 'Escribe un importe'}</a>
+        <small id="l-tip-note" class="${this.tipOther && this.tipVal && !a ? 'warn' : ''}">${this.tipOther && this.tipVal && !a ? 'El mínimo es 1 €.' : 'El pago va directo al artista.'}</small>
+      </section>`;
+  },
+  bindTip(){
+    document.querySelectorAll('[data-amt]').forEach(b => b.onclick = () => {
+      if (b.dataset.amt === 'otro'){ this.tipOther = true; this.render(); const i = $('#l-amt'); if (i) i.focus(); }
+      else { this.tipOther = false; this.tipAmt = Number(b.dataset.amt); this.render(); }
+    });
+    const i = $('#l-amt'); if (!i) return;
+    i.oninput = () => {
+      this.tipVal = i.value; const a = this.tipAmount(), btn = $('#l-tip'), note = $('#l-tip-note');
+      btn.href = tipURL(this.profile.tip, a);
+      btn.textContent = a ? 'Donar ' + String(a).replace('.', ',') + ' €' : 'Escribe un importe';
+      if (a) btn.removeAttribute('aria-disabled'); else btn.setAttribute('aria-disabled', 'true');
+      const bad = !!i.value && !a; note.className = bad ? 'warn' : ''; note.textContent = bad ? 'El mínimo es 1 €.' : 'El pago va directo al artista.';
+    };
+  },
+
   render(){
     const p = this.profile, st = this.status;
+    const refocus = document.activeElement && document.activeElement.id === 'l-amt';
     const links = [['Instagram', p.ig], ['YouTube', p.yt], ['Spotify', p.sp], ['Web', p.web]].filter(l => l[1]);
     const statusTxt = { checking:'Buscando el directo…', live:'En directo ahora', off:'Ahora no está en directo', ended:'El directo ha terminado', full:'Aforo completo', neterror:'Sin conexión a internet', slow:'Sin respuesta del artista' }[st];
     const svgPlay = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>';
@@ -1076,7 +1135,7 @@ const Listener = {
         ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}
         ${links.length ? `<div class="socials" style="grid-template-columns:repeat(${links.length === 4 ? 2 : links.length},1fr)">${links.map(l => `<a class="social" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]} <span aria-hidden="true">↗</span></a>`).join('')}</div>` : ''}
       </section>
-      ${p.tip ? `<a class="btn ghost" id="l-tip" href="${esc(p.tip)}" target="_blank" rel="noopener noreferrer">♥ Donar al artista</a>` : ''}
+      ${p.tip ? this.tipHTML(p) : ''}
       <div class="status ${st === 'live' ? 'live' : ''}" role="status"><span class="dot"></span>${statusTxt}${st === 'live' ? ` · <span id="l-n">${this.n} escuchando</span>` : ''}</div>
       <div class="now" id="l-now" ${st === 'live' && this.now ? '' : 'hidden'}><small>Ahora suena</small><span id="l-now-v">${esc(this.now)}</span></div>
       <section class="player">
@@ -1105,6 +1164,8 @@ const Listener = {
     on('#l-share', () => this.share());
     document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => this.react(b.dataset.r));
     on('#l-save', () => { if (isSaved(this.code)) removeSaved(this.code); else upsertSaved(this.profile); this.render(); });
+    this.bindTip();
+    if (refocus && $('#l-amt')){ const i = $('#l-amt'); i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(e){} }
     $('#l-awake').onchange = e => { store(LS.awake, e.target.checked); if (this.playing) keepAwake(e.target.checked); };
     if ($('#l-tech')) $('#l-tech').ontoggle = e => { this.techOpen = e.target.open; };
   }
