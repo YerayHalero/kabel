@@ -267,6 +267,7 @@
       <a class="btn primary" href="app/" data-i="cta.b1">Abrir el prototipo</a>
       <a class="btn ghost" id="contact" href="#" hidden data-i="cta.b2">Escríbenos</a>
     </div>
+    <p class="sub" id="contact-mail" hidden style="margin-top:14px;user-select:all"></p>
   </div>
 </section>
 
@@ -279,7 +280,7 @@
 
 <script>
 // Correo de contacto: vacío = el botón "Escríbenos" no se muestra.
-const CONTACT_EMAIL = '';
+const CONTACT_EMAIL = 'kabelymenterprise@gmail.com';
 
 const T = {
   en: {
@@ -372,7 +373,7 @@ try { start = localStorage.getItem('kabel_lang') || ''; } catch(e){}
 if (!start){ const n = (navigator.language || 'es').slice(0,2); start = T[n] ? n : 'es'; }
 setLang(start);
 
-if (CONTACT_EMAIL){ const c = document.getElementById('contact'); c.href = 'mailto:' + CONTACT_EMAIL; c.hidden = false; }
+if (CONTACT_EMAIL){ const c = document.getElementById('contact'); c.href = 'mailto:' + CONTACT_EMAIL; c.hidden = false; const m = document.getElementById('contact-mail'); m.textContent = CONTACT_EMAIL; m.hidden = false; }
 </script>
 </body>
 </html>
