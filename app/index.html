@@ -37,6 +37,9 @@
   .btn:disabled{opacity:.4;cursor:default}
   .link{background:none;border:0;color:var(--lime);font:inherit;font-weight:600;padding:8px;cursor:pointer}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .lang select{min-height:40px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px;padding:0 10px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
   .field{display:flex;flex-direction:column;gap:6px}
   .field label{font-size:14px;color:var(--dim)}
@@ -194,7 +197,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.6';
+const VERSION = 'v2.7';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -241,7 +244,7 @@ async function routeOf(conn, label){
 }
 dlog('KABEL ' + VERSION + ' · ' + (navigator.userAgent.match(/(Chrome|Firefox|Safari|Version)\/[\d.]+/) || ['?'])[0] + ' · ' + (location.protocol === 'https:' ? 'https' : 'SIN https') + ((navigator.connection && navigator.connection.effectiveType) ? ' · red ' + navigator.connection.effectiveType : ''));
 const ID_PREFIX = 'kabel-pilot-v1-';
-const LS = { artist:'kabel_artist', saved:'kabel_saved', device:'kabel_device', awake:'kabel_awake' };
+const LS = { artist:'kabel_artist', saved:'kabel_saved', device:'kabel_device', awake:'kabel_awake', lang:'kabel_lang' };
 const LIBS = {
   peer: ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'],
   qr:   ['https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js','https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js']
@@ -311,7 +314,152 @@ function cleanProfile(p, code){
   };
 }
 const baseURL = () => location.href.split('#')[0].split('?')[0];
-const listenURL = code => baseURL() + '?a=' + encodeURIComponent(code);
+const listenURL = (code, prof) => baseURL() + '?a=' + encodeURIComponent(code) + (prof && prof.name ? '&p=' + packProfile(prof) : '');
+
+// ---------- Idiomas de la pantalla del oyente ----------
+const LANGS = { es:'Español', en:'English', de:'Deutsch', da:'Dansk' };
+const LOCALES = { es:'es-ES', en:'en-GB', de:'de-DE', da:'da-DK' };
+const I18N = {
+  es: {
+    st_checking:'Buscando el directo…', st_live:'En directo ahora', st_off:'Ahora no está en directo', st_ended:'El directo ha terminado',
+    st_full:'Aforo completo', st_neterror:'Sin conexión a internet', st_slow:'Sin respuesta del artista', st_reconnect:'Reconectando…',
+    listening:'{n} escuchando',
+    sub_checking:'Un momento…', sub_live:'Conecta tus auriculares y pulsa para escuchar.',
+    sub_off:'Deja esta página abierta: se activará sola cuando empiece.',
+    sub_ended:'Gracias por escuchar. Esta página se activará sola en su próximo directo.',
+    sub_full:'Ahora mismo hay 25 personas escuchando, el máximo del piloto. Te conectamos solo en cuanto quede un hueco.',
+    sub_neterror:'No se llega al servidor de conexión. Seguimos intentándolo.',
+    sub_slow:'No se consigue conectar. Puede que el artista no esté en directo o que tu red tarde. Seguimos intentándolo.',
+    sub_reconnect:'Se ha cortado la conexión. Volverá a sonar sola en cuanto se recupere.',
+    sub_playing:'Estás escuchando en directo. Puedes alejarte: el sonido llega por internet.',
+    sub_tap:'Toca para activar el sonido.', connecting:'Conectando…',
+    noaudio:'No llega el audio. Comprueba tu conexión y vuelve a pulsar.',
+    now_playing:'Ahora suena', msg_from:'Mensaje de {name}',
+    a_listen:'Escuchar', a_stop:'Dejar de escuchar', a_tap:'Activar sonido', a_react:'Enviar {e} al artista',
+    save:'Guardar artista', saved:'Guardado ✓', share:'Compartir', copied:'Enlace copiado', share_fail:'No se pudo compartir',
+    share_title:'{name} en directo · KABEL', share_text:'Escucha el directo con tus auriculares',
+    awake:'Mantener la pantalla encendida mientras escuchas.',
+    ios_lock:'En iPhone el sonido se para si bloqueas la pantalla o cambias de app. Al volver, sigue solo o con un toque.',
+    announce:'En aeropuertos y estaciones, deja un oído libre para los avisos.',
+    test:'Probar mi conexión',
+    tip_title:'Apoya a {name}', tip_amount:'Importe', tip_other:'Otro', tip_ph:'Importe en €, mínimo 1', tip_other_label:'Otro importe en euros',
+    tip_btn:'Donar {a} €', tip_type:'Escribe un importe', tip_min:'El mínimo es 1 €.', tip_direct:'El pago va directo al artista.',
+    media_title:'En directo', lang:'Idioma'
+  },
+  en: {
+    st_checking:'Looking for the live set…', st_live:'Live now', st_off:'Not live right now', st_ended:'The live set has ended',
+    st_full:'Full', st_neterror:'No internet connection', st_slow:'No response from the artist', st_reconnect:'Reconnecting…',
+    listening:'{n} listening',
+    sub_checking:'One moment…', sub_live:'Plug in your headphones and tap to listen.',
+    sub_off:'Keep this page open: it will start by itself when the set begins.',
+    sub_ended:'Thanks for listening. This page will start by itself at their next live set.',
+    sub_full:'25 people are listening right now, the pilot maximum. We’ll connect you automatically as soon as a spot opens.',
+    sub_neterror:'Can’t reach the connection server. We keep trying.',
+    sub_slow:'Can’t connect. The artist may not be live, or your network is slow. We keep trying.',
+    sub_reconnect:'The connection dropped. The sound will come back by itself once it recovers.',
+    sub_playing:'You’re listening live. You can walk away: the sound comes over the internet.',
+    sub_tap:'Tap to turn on the sound.', connecting:'Connecting…',
+    noaudio:'No audio is arriving. Check your connection and tap again.',
+    now_playing:'Now playing', msg_from:'Message from {name}',
+    a_listen:'Listen', a_stop:'Stop listening', a_tap:'Turn on sound', a_react:'Send {e} to the artist',
+    save:'Save artist', saved:'Saved ✓', share:'Share', copied:'Link copied', share_fail:'Couldn’t share',
+    share_title:'{name} live · KABEL', share_text:'Listen to the live set with your headphones',
+    awake:'Keep the screen on while you listen.',
+    ios_lock:'On iPhone the sound stops if you lock the screen or switch apps. When you come back it resumes, sometimes with one tap.',
+    announce:'At airports and stations, keep one ear free for announcements.',
+    test:'Test my connection',
+    tip_title:'Support {name}', tip_amount:'Amount', tip_other:'Other', tip_ph:'Amount in €, minimum 1', tip_other_label:'Other amount in euros',
+    tip_btn:'Donate €{a}', tip_type:'Enter an amount', tip_min:'The minimum is €1.', tip_direct:'Your payment goes straight to the artist.',
+    media_title:'Live', lang:'Language'
+  },
+  de: {
+    st_checking:'Live-Set wird gesucht…', st_live:'Jetzt live', st_off:'Gerade nicht live', st_ended:'Das Live-Set ist vorbei',
+    st_full:'Voll', st_neterror:'Keine Internetverbindung', st_slow:'Keine Antwort vom Künstler', st_reconnect:'Verbindung wird wiederhergestellt…',
+    listening:'{n} hören zu',
+    sub_checking:'Einen Moment…', sub_live:'Kopfhörer anschließen und zum Zuhören tippen.',
+    sub_off:'Lass diese Seite offen: Sie startet von selbst, wenn das Set beginnt.',
+    sub_ended:'Danke fürs Zuhören. Diese Seite startet beim nächsten Live-Set von selbst.',
+    sub_full:'Gerade hören 25 Personen zu, das Maximum im Pilotbetrieb. Sobald ein Platz frei wird, verbinden wir dich automatisch.',
+    sub_neterror:'Der Verbindungsserver ist nicht erreichbar. Wir versuchen es weiter.',
+    sub_slow:'Keine Verbindung möglich. Vielleicht ist der Künstler nicht live oder dein Netz ist langsam. Wir versuchen es weiter.',
+    sub_reconnect:'Die Verbindung wurde unterbrochen. Der Ton kommt von selbst zurück, sobald sie wieder steht.',
+    sub_playing:'Du hörst live zu. Du kannst weggehen: Der Ton kommt über das Internet.',
+    sub_tap:'Tippe, um den Ton einzuschalten.', connecting:'Verbinde…',
+    noaudio:'Es kommt kein Ton an. Prüfe deine Verbindung und tippe noch einmal.',
+    now_playing:'Läuft gerade', msg_from:'Nachricht von {name}',
+    a_listen:'Zuhören', a_stop:'Nicht mehr zuhören', a_tap:'Ton einschalten', a_react:'{e} an den Künstler senden',
+    save:'Künstler speichern', saved:'Gespeichert ✓', share:'Teilen', copied:'Link kopiert', share_fail:'Teilen nicht möglich',
+    share_title:'{name} live · KABEL', share_text:'Hör dir das Live-Set mit deinen Kopfhörern an',
+    awake:'Bildschirm beim Zuhören eingeschaltet lassen.',
+    ios_lock:'Auf dem iPhone stoppt der Ton, wenn du den Bildschirm sperrst oder die App wechselst. Wenn du zurückkommst, geht es weiter, manchmal mit einem Tippen.',
+    announce:'An Flughäfen und Bahnhöfen: ein Ohr für Durchsagen frei lassen.',
+    test:'Verbindung testen',
+    tip_title:'Unterstütze {name}', tip_amount:'Betrag', tip_other:'Andere', tip_ph:'Betrag in €, mindestens 1', tip_other_label:'Anderer Betrag in Euro',
+    tip_btn:'{a} € spenden', tip_type:'Betrag eingeben', tip_min:'Der Mindestbetrag ist 1 €.', tip_direct:'Die Zahlung geht direkt an den Künstler.',
+    media_title:'Live', lang:'Sprache'
+  },
+  da: {
+    st_checking:'Søger efter livesendingen…', st_live:'Live nu', st_off:'Ikke live lige nu', st_ended:'Livesendingen er slut',
+    st_full:'Fuldt', st_neterror:'Ingen internetforbindelse', st_slow:'Intet svar fra kunstneren', st_reconnect:'Genopretter forbindelsen…',
+    listening:'{n} lytter',
+    sub_checking:'Et øjeblik…', sub_live:'Tilslut dine hovedtelefoner, og tryk for at lytte.',
+    sub_off:'Lad siden være åben: Den starter af sig selv, når sendingen begynder.',
+    sub_ended:'Tak fordi du lyttede. Siden starter af sig selv ved næste livesending.',
+    sub_full:'Lige nu lytter 25 personer, pilotens maksimum. Vi forbinder dig automatisk, så snart der er plads.',
+    sub_neterror:'Forbindelsesserveren kan ikke nås. Vi bliver ved med at prøve.',
+    sub_slow:'Kan ikke forbinde. Kunstneren er måske ikke live, eller dit netværk er langsomt. Vi bliver ved med at prøve.',
+    sub_reconnect:'Forbindelsen blev afbrudt. Lyden kommer af sig selv tilbage, når den er genoprettet.',
+    sub_playing:'Du lytter live. Du kan godt gå væk: Lyden kommer via internettet.',
+    sub_tap:'Tryk for at tænde for lyden.', connecting:'Forbinder…',
+    noaudio:'Der kommer ingen lyd. Tjek din forbindelse, og tryk igen.',
+    now_playing:'Spiller nu', msg_from:'Besked fra {name}',
+    a_listen:'Lyt', a_stop:'Stop med at lytte', a_tap:'Tænd for lyden', a_react:'Send {e} til kunstneren',
+    save:'Gem kunstner', saved:'Gemt ✓', share:'Del', copied:'Link kopieret', share_fail:'Kunne ikke dele',
+    share_title:'{name} live · KABEL', share_text:'Lyt til livesendingen med dine hovedtelefoner',
+    awake:'Hold skærmen tændt, mens du lytter.',
+    ios_lock:'På iPhone stopper lyden, hvis du låser skærmen eller skifter app. Når du kommer tilbage, fortsætter den, nogle gange efter et tryk.',
+    announce:'I lufthavne og på stationer: Hold et øre fri til meddelelser.',
+    test:'Test min forbindelse',
+    tip_title:'Støt {name}', tip_amount:'Beløb', tip_other:'Andet', tip_ph:'Beløb i €, mindst 1', tip_other_label:'Andet beløb i euro',
+    tip_btn:'Donér {a} €', tip_type:'Skriv et beløb', tip_min:'Minimum er 1 €.', tip_direct:'Betalingen går direkte til kunstneren.',
+    media_title:'Live', lang:'Sprog'
+  }
+};
+function pickLang(){
+  const s = load(LS.lang, null); if (s && I18N[s]) return s;
+  const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']);
+  for (const l of prefs){ const k = String(l).slice(0, 2).toLowerCase(); if (I18N[k]) return k; }
+  return 'en';
+}
+let LANG = 'es';
+const t = (key, vars) => {
+  let s = (I18N[LANG] && I18N[LANG][key]) || I18N.es[key] || key;
+  if (vars) for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
+  return s;
+};
+const fmtAmt = a => Number(a).toLocaleString(LOCALES[LANG] || 'es-ES', { maximumFractionDigits:2 });
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// ---------- Perfil dentro del enlace del QR ----------
+// El QR lleva nombre, descripción y enlaces del artista: el oyente los ve aunque la conexión de audio falle.
+const PACK_KEYS = { ig:'i', yt:'y', sp:'s', web:'w', tip:'t' };
+function packProfile(a){
+  const o = { n: a.name };
+  if (a.bio) o.b = a.bio;
+  for (const k in PACK_KEYS) if (a[k]) o[PACK_KEYS[k]] = String(a[k]).replace(/^https:\/\//, '');
+  const b = btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+  return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function unpackProfile(s, code){
+  try {
+    const b = s.replace(/-/g, '+').replace(/_/g, '/');
+    const o = JSON.parse(decodeURIComponent(escape(atob(b + '==='.slice((b.length + 3) % 4)))));
+    const p = { name:o.n, bio:o.b };
+    for (const k in PACK_KEYS) if (o[PACK_KEYS[k]]) p[k] = 'https://' + String(o[PACK_KEYS[k]]).replace(/^https?:\/\//, '');
+    return cleanProfile(p, code);
+  } catch(e){ return null; }
+}
+
 
 // Opus en estéreo, 128 kbps y sin DTX: la configuración por defecto de WebRTC está pensada para voz.
 function opusStereo(sdp){
@@ -361,11 +509,12 @@ const clip = (v, n) => String(v || '').slice(0, n);
 // ---------- QR ----------
 async function qrCanvas(code, name){
   await need('qr');
-  const qr = qrcode(0, 'M'); qr.addData(listenURL(code)); qr.make();
+  const me = load(LS.artist, null);
+  const qr = qrcode(0, 'M'); qr.addData(listenURL(code, me && me.code === code ? me : null)); qr.make();
   const n = qr.getModuleCount(), cell = 14, quiet = 4, pad = 36;
   const size = (n + quiet * 2) * cell;
   const cv = document.createElement('canvas');
-  cv.width = size + pad * 2; cv.height = size + pad * 2 + 150;
+  cv.width = size + pad * 2; cv.height = size + pad * 2 + 190;
   const g = cv.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
   g.fillStyle = '#000';
@@ -376,8 +525,9 @@ async function qrCanvas(code, name){
   g.fillText(name, cv.width / 2, size + pad + 58, cv.width - pad * 2);
   g.font = '500 26px Archivo, system-ui, sans-serif'; g.fillStyle = '#444';
   g.fillText('Escanea y escucha el directo con tus auriculares', cv.width / 2, size + pad + 100, cv.width - pad * 2);
+  g.fillText('Scan and listen live with your headphones', cv.width / 2, size + pad + 136, cv.width - pad * 2);
   g.font = '900 22px Archivo, system-ui, sans-serif'; g.fillStyle = '#000';
-  g.fillText('KABEL', cv.width / 2, size + pad + 136);
+  g.fillText('KABEL', cv.width / 2, size + pad + 176);
   return cv;
 }
 // Modo cabina: QR a pantalla completa con el número de oyentes en vivo.
@@ -519,7 +669,7 @@ const Console = {
   ctx:null, splitter:null, anL:null, anR:null, monGain:null, src:null,
   stream:null, fileEl:null, mono:false, devices:[], source:'',
   peer:null, conns:new Map(), calls:new Map(), live:false, t0:0, tick:0, endArmed:0, raf:0,
-  hold:{ v:-100, t:0 }, nowPlaying:'', tally:{}, lastReact:new Map(), sentN:-1,
+  hold:{ v:-100, t:0 }, nowPlaying:'', msg:'', tally:{}, lastReact:new Map(), sentN:-1,
 
   get artist(){ return load(LS.artist, null); },
 
@@ -559,6 +709,16 @@ const Console = {
         <small id="c-now-st">${this.nowPlaying ? 'Tus oyentes lo están viendo.' : 'Tus oyentes lo verán bajo tu nombre.'}</small>
       </section>
 
+      <section class="field">
+        <label for="c-msg">Mensaje para tus oyentes (opcional)</label>
+        <div class="inline"><input type="text" id="c-msg" maxlength="80" autocomplete="off" placeholder="¡Gracias por estar ahí! Último tema en 5 min" value="${esc(this.msg)}">
+          <button class="btn ghost" id="c-msg-send" type="button">Enviar</button></div>
+        <small id="c-msg-st">${this.msg ? 'Tus oyentes lo están viendo.' : 'Aparece en la pantalla de todos los que te escuchan. Bórralo y envía para quitarlo.'}</small>
+      </section>
+
+      <button class="btn primary" id="c-share" type="button">Avisar en redes que estoy en directo</button>
+      <small id="c-share-st" style="color:var(--dim);margin-top:-10px">Abre WhatsApp, Instagram o lo que uses, con el enlace a tu directo listo para pegar.</small>
+
       <div class="row2">
         <button class="btn ghost" id="c-qr" type="button">Mostrar QR</button>
         <button class="btn ghost" id="c-dl" type="button">Descargar QR</button>
@@ -597,6 +757,21 @@ const Console = {
       $('#c-now-st').textContent = this.nowPlaying ? (this.live ? 'Tus oyentes lo están viendo.' : 'Se mostrará cuando vayas en directo.') : 'Tus oyentes lo verán bajo tu nombre.';
     };
     $('#c-now-send').onclick = sendNow;
+    const sendMsg = () => {
+      this.msg = clip($('#c-msg').value.trim(), 80);
+      this.broadcast(this.snapshot());
+      $('#c-msg-st').textContent = this.msg ? (this.live ? 'Tus oyentes lo están viendo.' : 'Se mostrará cuando vayas en directo.') : 'Mensaje quitado.';
+    };
+    $('#c-msg-send').onclick = sendMsg;
+    $('#c-msg').onkeydown = e => { if (e.key === 'Enter') sendMsg(); };
+    $('#c-share').onclick = async () => {
+      const url = listenURL(a.code, a), text = (this.live ? '🔴 Estoy en directo en Kabel. ' : '🎧 Escúchame en directo en Kabel. ') + 'Ponte los auriculares y entra aquí:';
+      try {
+        if (navigator.share){ await navigator.share({ title:a.name + ' · KABEL', text, url }); return; }
+        await navigator.clipboard.writeText(text + ' ' + url);
+        $('#c-share-st').textContent = 'Texto y enlace copiados: pégalos en tu historia de Instagram, en WhatsApp o donde quieras.';
+      } catch(e){ if (!(e && e.name === 'AbortError')) $('#c-share-st').textContent = 'No se pudo compartir. Copia el enlace: ' + url; }
+    };
     $('#c-now').onkeydown = e => { if (e.key === 'Enter') sendNow(); };
     this.paintTally(); bindDiag();
     $('#c-dl').onclick = () => downloadQR(a.code, a.name);
@@ -778,7 +953,7 @@ const Console = {
 
   onConn(c){
     this.conns.set(c.peer, c); watchICE(c, 'Oyente ' + String(c.peer).slice(0, 4));
-    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, sp:a.sp, web:a.web, tip:a.tip } }); });
+    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, msg:this.msg, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, sp:a.sp, web:a.web, tip:a.tip } }); });
     c.on('data', d => {
       if (!d) return;
       if (d.t === 'listen'){ dlog('Artista: el oyente pulsa escuchar'); this.startCall(c); }
@@ -789,7 +964,7 @@ const Console = {
     c.on('error', err => dlog('Artista: error con oyente · ' + (err && err.type || err)));
   },
 
-  snapshot(){ return { t:'state', n:this.calls.size, now:this.nowPlaying }; },
+  snapshot(){ return { t:'state', n:this.calls.size, now:this.nowPlaying, msg:this.msg }; },
   broadcast(msg){ this.conns.forEach(c => { if (c.open){ try { c.send(msg); } catch(e){} } }); },
   notifyCount(){ if (this.calls.size !== this.sentN){ this.sentN = this.calls.size; this.broadcast(this.snapshot()); } },
 
@@ -875,18 +1050,40 @@ window.addEventListener('beforeunload', e => { if (Console.live){ e.preventDefau
 // =========================================================================
 const Listener = {
   code:'', pid:'', profile:null, status:'checking', peer:null, conn:null, call:null,
-  reason:'', pending:false, tries:0, toT:0, want:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, statsT:0, techOpen:false, last:null,
-  audio:null, n:0, now:'', lastSent:0, shareMsg:'',
+  reason:'', pending:false, tries:0, toT:0, want:false, keep:false, connecting:false, playing:false, needTap:false, retryT:0, noAudioT:0, fullT:0, statsT:0, techOpen:false, last:null,
+  audio:null, n:0, now:'', msg:'', lastSent:0, shareMsg:'', flash:'',
 
   start(code){
     this.code = code; this.pid = peerIdFor(code);
-    this.profile = saved().find(s => s.code === code) || cleanProfile({}, code);
+    LANG = pickLang(); document.documentElement.lang = LANG;
+    const packed = new URLSearchParams(location.search).get('p');
+    this.profile = saved().find(s => s.code === code) || (packed && unpackProfile(packed, code)) || cleanProfile({}, code);
     this.audio = document.createElement('audio'); this.audio.setAttribute('playsinline', ''); this.audio.autoplay = true;
     document.body.appendChild(this.audio);
     if (load(LS.awake, null) === null) store(LS.awake, true);
     this.render();
     need('peer').then(() => this.initPeer()).catch(() => { this.reason = 'no se pudo descargar PeerJS'; dlog('Oyente: no se pudo descargar PeerJS (unpkg ni jsDelivr)'); this.set('neterror'); });
     window.addEventListener('online', () => this.tryConnect());
+    // Al volver a la página (pantalla desbloqueada, vuelta desde otra app): retomar el audio si se estaba escuchando.
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.resume(); });
+  },
+
+  resume(){
+    if (!this.keep) return;
+    dlog('Oyente: página visible de nuevo, retomando');
+    if (this.playing){
+      if (this.audio.paused) this.audio.play().catch(() => { this.needTap = true; this.render(); });
+      return;
+    }
+    if (this.conn && this.conn.open && this.status === 'live'){ this.ask(); return; }
+    this.tryConnect();
+  },
+
+  // Pide el audio al artista (también para reanudar sin que el oyente toque nada).
+  ask(){
+    if (!(this.conn && this.conn.open)) return;
+    this.want = true; this.connecting = true; this.render();
+    try { this.conn.send({ t:'listen' }); } catch(e){}
   },
 
   initPeer(){
@@ -921,7 +1118,7 @@ const Listener = {
       this.pending = false; dlog('Oyente: sin respuesta tras ' + (CONNECT_TIMEOUT / 1000) + ' s: la conexión directa no se abre');
       try { c.close(); } catch(e){}
       if (this.conn === c) this.conn = null;
-      if (this.status !== 'ended') this.set('slow');
+      if (this.status !== 'ended') this.set(this.keep ? 'reconnect' : 'slow');
       this.retry(6000);
     }, CONNECT_TIMEOUT);
     c.on('open', () => { clearTimeout(this.toT); this.pending = false; dlog('Oyente: conexión con el artista abierta ✓'); routeOf(c, 'Artista'); });
@@ -931,8 +1128,12 @@ const Listener = {
       if (this.conn !== c) return;
       clearTimeout(this.toT); this.pending = false; this.conn = null;
       dlog('Oyente: conexión con el artista cerrada');
-      if (this.status === 'live'){ this.stopAudio(false); this.set('ended'); }
-      this.retry(8000);
+      if (this.status === 'live'){
+        // Corte inesperado (el aviso de fin llega antes como mensaje 'end').
+        if (this.keep){ this.stopAudio(false, true); this.set('reconnect'); this.retry(2000); return; }
+        this.stopAudio(false); this.set('ended');
+      }
+      this.retry(this.keep ? 3000 : 8000);
     });
   },
 
@@ -944,16 +1145,20 @@ const Listener = {
     if (d.t === 'hello'){
       const was = this.status;
       this.profile = cleanProfile(d.profile, this.code);
-      this.n = Number(d.n) || 0; this.now = clip(d.now, 60);
+      this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.msg = clip(d.msg, 80);
       if (isSaved(this.code)) upsertSaved(this.profile);
       if ((was === 'off' || was === 'ended') && navigator.vibrate) navigator.vibrate([120, 60, 120]);
       dlog('Oyente: el artista está en directo ✓');
       this.set('live');
-      if (this.want){ dlog('Oyente: pidiendo el audio'); this.conn.send({ t:'listen' }); }
+      if (this.want || this.keep){ dlog('Oyente: pidiendo el audio' + (this.keep && !this.want ? ' (reanudación automática)' : '')); this.ask(); }
     }
-    if (d.t === 'state'){ this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.paintMeta(); }
+    if (d.t === 'state'){ this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.msg = clip(d.msg, 80); this.paintMeta(); }
     if (d.t === 'react') floatEmoji(d.e);
-    if (d.t === 'full'){ this.want = false; this.connecting = false; this.set('full'); }
+    if (d.t === 'full'){
+      this.want = false; this.connecting = false; this.set('full');
+      clearTimeout(this.fullT);
+      if (this.keep) this.fullT = setTimeout(() => { if (this.status === 'full' && this.keep){ dlog('Oyente: reintento tras aforo completo'); this.status = 'live'; this.ask(); } }, 20000);
+    }
     if (d.t === 'end'){ this.stopAudio(false); this.set('ended'); }
   },
 
@@ -961,14 +1166,15 @@ const Listener = {
     dlog('Oyente: pulsado escuchar (conexión ' + (this.conn && this.conn.open ? 'abierta' : 'no abierta aún') + ')');
     // Desbloqueo de audio dentro del toque del usuario (necesario en iPhone).
     try { const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC(); ctx.resume(); setTimeout(() => ctx.close(), 500); } catch(e){}
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
     this.audio.play().catch(() => {});
-    this.want = true; this.connecting = true; this.needTap = false;
+    this.want = true; this.keep = true; this.connecting = true; this.needTap = false;
     if (load(LS.awake, true)) keepAwake(true);
     this.render();
     if (this.conn && this.conn.open) this.conn.send({ t:'listen' }); else this.tryConnect();
     clearTimeout(this.noAudioT);
     this.noAudioT = setTimeout(() => {
-      if (this.connecting && !this.playing){ dlog('Oyente: no llegó audio en 15 s'); this.connecting = false; this.want = false; this.flash = 'No llega el audio. Comprueba tu conexión y vuelve a pulsar.'; this.render(); }
+      if (this.connecting && !this.playing && this.status !== 'full'){ dlog('Oyente: no llegó audio en 15 s'); this.connecting = false; this.want = false; this.keep = false; this.flash = 'noaudio'; this.render(); }
     }, 15000);
   },
 
@@ -986,44 +1192,59 @@ const Listener = {
       clearTimeout(this.noAudioT);
       this.media(); this.startStats(); this.render();
     });
-    call.on('close', () => { if (this.call === call){ this.call = null; if (this.playing){ this.stopAudio(false); this.render(); } } });
+    call.on('close', () => {
+      if (this.call !== call) return;
+      this.call = null;
+      if (!this.playing) return;
+      const k = this.keep;
+      this.stopAudio(false, k);
+      // Se cortó el audio pero la conexión sigue: lo pedimos de nuevo.
+      if (k && this.status === 'live') setTimeout(() => this.ask(), 1500);
+      this.render();
+    });
   },
 
-  stopAudio(tell = true){
+  stopAudio(tell = true, keepWanted = false){
     if (tell && this.conn && this.conn.open){ try { this.conn.send({ t:'stop' }); } catch(e){} }
     if (this.call){ const c = this.call; this.call = null; try { c.close(); } catch(e){} }
     this.audio.pause(); this.audio.srcObject = null;
-    this.playing = false; this.want = false; this.connecting = false; this.needTap = false;
-    clearInterval(this.statsT); keepAwake(false);
+    this.playing = false; this.want = false; this.connecting = false; this.needTap = false; this.keep = keepWanted;
+    clearInterval(this.statsT); clearTimeout(this.fullT);
+    if (!keepWanted) keepAwake(false);
+    try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; } catch(e){}
   },
 
   media(){
     if (!('mediaSession' in navigator)) return;
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title:'En directo', artist:this.profile.name, album:'KABEL' });
+      navigator.mediaSession.metadata = new MediaMetadata({ title:t('media_title'), artist:this.profile.name, album:'KABEL' });
+      navigator.mediaSession.playbackState = 'playing';
+      navigator.mediaSession.setActionHandler('play', () => { if (this.playing) this.audio.play().catch(() => {}); else this.listen(); });
       navigator.mediaSession.setActionHandler('pause', () => { this.stopAudio(); this.render(); });
       navigator.mediaSession.setActionHandler('stop', () => { this.stopAudio(); this.render(); });
     } catch(e){}
   },
 
   paintMeta(){
-    const n = $('#l-n'); if (n) n.textContent = this.n + ' escuchando';
+    const n = $('#l-n'); if (n) n.textContent = t('listening', { n:this.n });
     const box = $('#l-now');
     if (box){ box.hidden = !(this.status === 'live' && this.now); const v = $('#l-now-v'); if (v) v.textContent = this.now; }
+    const mb = $('#l-msg');
+    if (mb){ mb.hidden = !(this.status === 'live' && this.msg); const v = $('#l-msg-v'); if (v) v.textContent = this.msg; }
   },
 
   react(e){
-    const t = Date.now(); if (t - this.lastSent < 600) return; this.lastSent = t;
+    const tm = Date.now(); if (tm - this.lastSent < 600) return; this.lastSent = tm;
     if (this.conn && this.conn.open){ try { this.conn.send({ t:'react', e }); } catch(err){} }
     floatEmoji(e); if (navigator.vibrate) navigator.vibrate(12);
   },
 
   async share(){
-    const url = listenURL(this.code), title = this.profile.name + ' en directo · KABEL';
+    const url = listenURL(this.code, this.profile), title = t('share_title', { name:this.profile.name });
     try {
-      if (navigator.share){ await navigator.share({ title, text:'Escucha el directo con tus auriculares', url }); return; }
-      await navigator.clipboard.writeText(url); this.shareMsg = 'Enlace copiado';
-    } catch(e){ if (e && e.name === 'AbortError') return; this.shareMsg = 'No se pudo compartir'; }
+      if (navigator.share){ await navigator.share({ title, text:t('share_text'), url }); return; }
+      await navigator.clipboard.writeText(url); this.shareMsg = 'copied';
+    } catch(e){ if (e && e.name === 'AbortError') return; this.shareMsg = 'share_fail'; }
     this.render(); setTimeout(() => { this.shareMsg = ''; this.render(); }, 2000);
   },
 
@@ -1068,18 +1289,18 @@ const Listener = {
     return (isFinite(v) && v >= 1) ? Math.round(v * 100) / 100 : 0;
   },
   tipHTML(p){
-    const a = this.tipAmount();
-    return `<section class="tipbox" aria-label="Donar al artista">
-        <b>♥ Apoya a ${esc(p.name)}</b>
-        <div class="amounts" role="group" aria-label="Importe">
-          ${TIP_AMOUNTS.map(n => `<button type="button" class="amt ${!this.tipOther && this.tipAmt === n ? 'on' : ''}" data-amt="${n}" aria-pressed="${!this.tipOther && this.tipAmt === n}">${n} €</button>`).join('')}
-          <button type="button" class="amt ${this.tipOther ? 'on' : ''}" data-amt="otro" aria-pressed="${this.tipOther}">Otro</button>
+    const a = this.tipAmount(), bad = this.tipOther && this.tipVal && !a;
+    return `<section class="tipbox" aria-label="${esc(t('tip_title', { name:p.name }))}">
+        <b>♥ ${esc(t('tip_title', { name:p.name }))}</b>
+        <div class="amounts" role="group" aria-label="${esc(t('tip_amount'))}">
+          ${TIP_AMOUNTS.map(n => `<button type="button" class="amt ${!this.tipOther && this.tipAmt === n ? 'on' : ''}" data-amt="${n}" aria-pressed="${!this.tipOther && this.tipAmt === n}">${fmtAmt(n)} €</button>`).join('')}
+          <button type="button" class="amt ${this.tipOther ? 'on' : ''}" data-amt="otro" aria-pressed="${this.tipOther}">${esc(t('tip_other'))}</button>
         </div>
         <div class="tip-other" ${this.tipOther ? '' : 'hidden'}>
-          <input id="l-amt" type="text" inputmode="decimal" autocomplete="off" placeholder="Importe en €, mínimo 1" value="${esc(this.tipVal)}" aria-label="Otro importe en euros">
+          <input id="l-amt" type="text" inputmode="decimal" autocomplete="off" placeholder="${esc(t('tip_ph'))}" value="${esc(this.tipVal)}" aria-label="${esc(t('tip_other_label'))}">
         </div>
-        <a class="btn primary" id="l-tip" target="_blank" rel="noopener noreferrer" href="${esc(tipURL(p.tip, a))}" ${a ? '' : 'aria-disabled="true"'}>${a ? 'Donar ' + String(a).replace('.', ',') + ' €' : 'Escribe un importe'}</a>
-        <small id="l-tip-note" class="${this.tipOther && this.tipVal && !a ? 'warn' : ''}">${this.tipOther && this.tipVal && !a ? 'El mínimo es 1 €.' : 'El pago va directo al artista.'}</small>
+        <a class="btn primary" id="l-tip" target="_blank" rel="noopener noreferrer" href="${esc(tipURL(p.tip, a))}" ${a ? '' : 'aria-disabled="true"'}>${esc(a ? t('tip_btn', { a:fmtAmt(a) }) : t('tip_type'))}</a>
+        <small id="l-tip-note" class="${bad ? 'warn' : ''}">${esc(bad ? t('tip_min') : t('tip_direct'))}</small>
       </section>`;
   },
   bindTip(){
@@ -1091,9 +1312,9 @@ const Listener = {
     i.oninput = () => {
       this.tipVal = i.value; const a = this.tipAmount(), btn = $('#l-tip'), note = $('#l-tip-note');
       btn.href = tipURL(this.profile.tip, a);
-      btn.textContent = a ? 'Donar ' + String(a).replace('.', ',') + ' €' : 'Escribe un importe';
+      btn.textContent = a ? t('tip_btn', { a:fmtAmt(a) }) : t('tip_type');
       if (a) btn.removeAttribute('aria-disabled'); else btn.setAttribute('aria-disabled', 'true');
-      const bad = !!i.value && !a; note.className = bad ? 'warn' : ''; note.textContent = bad ? 'El mínimo es 1 €.' : 'El pago va directo al artista.';
+      const bad = !!i.value && !a; note.className = bad ? 'warn' : ''; note.textContent = bad ? t('tip_min') : t('tip_direct');
     };
   },
 
@@ -1101,34 +1322,31 @@ const Listener = {
     const p = this.profile, st = this.status;
     const refocus = document.activeElement && document.activeElement.id === 'l-amt';
     const links = [['Instagram', p.ig], ['YouTube', p.yt], ['Spotify', p.sp], ['Web', p.web]].filter(l => l[1]);
-    const statusTxt = { checking:'Buscando el directo…', live:'En directo ahora', off:'Ahora no está en directo', ended:'El directo ha terminado', full:'Aforo completo', neterror:'Sin conexión a internet', slow:'Sin respuesta del artista' }[st];
+    const statusTxt = t('st_' + st);
     const svgPlay = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>';
     const svgStop = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
+    const testURL = baseURL() + '#test';
 
     let control, sub;
     if (this.playing){
       control = this.needTap
-        ? `<button class="play" id="l-tap" type="button" aria-label="Activar sonido">${svgPlay}</button>`
-        : `<button class="play stop" id="l-stop" type="button" aria-label="Dejar de escuchar">${svgStop}</button>`;
-      sub = this.needTap ? 'Toca para activar el sonido.' : 'Estás escuchando en directo. Puedes alejarte: el sonido llega por internet.';
+        ? `<button class="play" id="l-tap" type="button" aria-label="${esc(t('a_tap'))}">${svgPlay}</button>`
+        : `<button class="play stop" id="l-stop" type="button" aria-label="${esc(t('a_stop'))}">${svgStop}</button>`;
+      sub = this.needTap ? t('sub_tap') : t('sub_playing');
     } else if (this.connecting){
-      control = `<div class="spin" role="status" aria-label="Conectando"></div>`; sub = 'Conectando…';
+      control = `<div class="spin" role="status" aria-label="${esc(t('connecting'))}"></div>`; sub = t('connecting');
     } else {
-      control = `<button class="play" id="l-play" type="button" aria-label="Escuchar" ${st === 'live' ? '' : 'disabled'}>${svgPlay}</button>`;
-      sub = this.flash || ({
-        checking:'Un momento…',
-        live:'Conecta tus auriculares y pulsa para escuchar.',
-        off:'Deja esta página abierta: se activará sola cuando empiece.',
-        ended:'Gracias por escuchar. Esta página se activará sola en su próximo directo.',
-        full:'El piloto admite 25 oyentes a la vez. Vuelve a intentarlo en unos minutos.',
-        neterror:'No se llega al servidor de conexión. Seguimos intentándolo.' + (this.reason ? ' (' + this.reason + ')' : ''),
-        slow:'No se consigue conectar. Puede que el artista no esté en directo o que tu red tarde. Seguimos intentándolo.'
-      }[st]);
+      control = `<button class="play" id="l-play" type="button" aria-label="${esc(t('a_listen'))}" ${st === 'live' ? '' : 'disabled'}>${svgPlay}</button>`;
+      sub = this.flash ? t(this.flash) : t('sub_' + st) + (st === 'neterror' && this.reason ? ' (' + this.reason + ')' : '');
     }
 
     app.innerHTML = `
     <div class="wrap">
-      <a class="brand" href="./">KABEL</a>
+      <div class="topbar">
+        <a class="brand" href="./">KABEL</a>
+        <label class="lang"><span class="sr">${esc(t('lang'))}</span>
+          <select id="l-lang" aria-label="${esc(t('lang'))}">${Object.keys(LANGS).map(k => `<option value="${k}" ${k === LANG ? 'selected' : ''}>${LANGS[k]}</option>`).join('')}</select></label>
+      </div>
       <section class="artist">
         <span class="mono xl">${esc(initial(p.name))}</span>
         <h1>${esc(p.name)}</h1>
@@ -1136,24 +1354,26 @@ const Listener = {
         ${links.length ? `<div class="socials" style="grid-template-columns:repeat(${links.length === 4 ? 2 : links.length},1fr)">${links.map(l => `<a class="social" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]} <span aria-hidden="true">↗</span></a>`).join('')}</div>` : ''}
       </section>
       ${p.tip ? this.tipHTML(p) : ''}
-      <div class="status ${st === 'live' ? 'live' : ''}" role="status"><span class="dot"></span>${statusTxt}${st === 'live' ? ` · <span id="l-n">${this.n} escuchando</span>` : ''}</div>
-      <div class="now" id="l-now" ${st === 'live' && this.now ? '' : 'hidden'}><small>Ahora suena</small><span id="l-now-v">${esc(this.now)}</span></div>
+      <div class="status ${st === 'live' ? 'live' : ''}" role="status"><span class="dot"></span>${esc(statusTxt)}${st === 'live' ? ` · <span id="l-n">${esc(t('listening', { n:this.n }))}</span>` : ''}</div>
+      <div class="now" id="l-msg" ${st === 'live' && this.msg ? '' : 'hidden'}><small>${esc(t('msg_from', { name:p.name }))}</small><span id="l-msg-v">${esc(this.msg)}</span></div>
+      <div class="now" id="l-now" ${st === 'live' && this.now ? '' : 'hidden'}><small>${esc(t('now_playing'))}</small><span id="l-now-v">${esc(this.now)}</span></div>
       <section class="player">
         ${control}
         ${this.playing && !this.needTap ? '<div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>' : ''}
         <p class="sub">${esc(sub)}</p>
-        ${this.playing && !this.needTap ? `<div class="react-bar">${REACTIONS.map(e => `<button class="react" type="button" data-r="${e}" aria-label="Enviar ${e} al artista">${e}</button>`).join('')}</div>` : ''}
+        ${this.playing && !this.needTap ? `<div class="react-bar">${REACTIONS.map(e => `<button class="react" type="button" data-r="${e}" aria-label="${esc(t('a_react', { e }))}">${e}</button>`).join('')}</div>
+        <p class="sub" style="font-size:13px">${esc(t('announce'))}</p>` : ''}
       </section>
       <div class="row2">
-        <button class="btn ghost" id="l-save" type="button">${isSaved(this.code) ? 'Guardado ✓' : 'Guardar artista'}</button>
-        <button class="btn ghost" id="l-share" type="button">${this.shareMsg || 'Compartir'}</button>
+        <button class="btn ghost" id="l-save" type="button">${esc(isSaved(this.code) ? t('saved') : t('save'))}</button>
+        <button class="btn ghost" id="l-share" type="button">${esc(t(this.shareMsg || 'share'))}</button>
       </div>
-      <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>Mantener la pantalla encendida mientras escuchas. En algunos iPhone el sonido se corta al bloquearla.</span></label>
-      ${(st === 'neterror' || st === 'slow') ? '<a class="btn ghost" href="#test">Probar mi conexión</a>' : ''}
+      <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>${esc(t('awake'))}${IS_IOS ? ' ' + esc(t('ios_lock')) : ''}</span></label>
+      ${(st === 'neterror' || st === 'slow') ? `<a class="btn ghost" href="${esc(testURL)}">${esc(t('test'))}</a>` : ''}
       ${DEBUG ? `<details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
         <div class="body stats" id="l-stats">${this.playing ? '<p>Midiendo…</p>' : '<p>Aparecerán cuando empieces a escuchar.</p>'}</div></details>
       ${diagHTML()}` : ''}
-      <p class="note">${VERSION} · <a href="#test">Probar mi conexión</a></p>
+      <p class="note">${VERSION} · <a href="${esc(testURL)}">${esc(t('test'))}</a></p>
     </div>`;
     bindDiag();
 
@@ -1167,6 +1387,7 @@ const Listener = {
     this.bindTip();
     if (refocus && $('#l-amt')){ const i = $('#l-amt'); i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(e){} }
     $('#l-awake').onchange = e => { store(LS.awake, e.target.checked); if (this.playing) keepAwake(e.target.checked); };
+    $('#l-lang').onchange = e => { LANG = e.target.value; store(LS.lang, LANG); document.documentElement.lang = LANG; this.media && this.playing && this.media(); this.render(); };
     if ($('#l-tech')) $('#l-tech').ontoggle = e => { this.techOpen = e.target.open; };
   }
 };
