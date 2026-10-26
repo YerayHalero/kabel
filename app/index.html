@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Kabel">
 <title>KABEL · prototipo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -197,7 +203,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.8';
+const VERSION = 'v2.9';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -364,7 +370,8 @@ const I18N = {
     test:'Probar mi conexión',
     tip_title:'Apoya a {name}', tip_amount:'Importe', tip_other:'Otro', tip_ph:'Importe en €, mínimo 1', tip_other_label:'Otro importe en euros',
     tip_btn:'Donar {a} €', tip_type:'Escribe un importe', tip_min:'El mínimo es 1 €.', tip_direct:'El pago va directo al artista.',
-    media_title:'En directo', lang:'Idioma'
+    media_title:'En directo', lang:'Idioma',
+    install:'Instalar Kabel', install_why:'Instálala para tener a tus artistas a un toque.', install_ios:'En iPhone: toca Compartir y luego «Añadir a pantalla de inicio».'
   },
   en: {
     st_checking:'Looking for the live set…', st_live:'Live now', st_off:'Not live right now', st_ended:'The live set has ended',
@@ -390,7 +397,8 @@ const I18N = {
     test:'Test my connection',
     tip_title:'Support {name}', tip_amount:'Amount', tip_other:'Other', tip_ph:'Amount in €, minimum 1', tip_other_label:'Other amount in euros',
     tip_btn:'Donate €{a}', tip_type:'Enter an amount', tip_min:'The minimum is €1.', tip_direct:'Your payment goes straight to the artist.',
-    media_title:'Live', lang:'Language'
+    media_title:'Live', lang:'Language',
+    install:'Install Kabel', install_why:'Install it to keep your artists one tap away.', install_ios:'On iPhone: tap Share, then “Add to Home Screen”.'
   },
   de: {
     st_checking:'Live-Set wird gesucht…', st_live:'Jetzt live', st_off:'Gerade nicht live', st_ended:'Das Live-Set ist vorbei',
@@ -416,7 +424,8 @@ const I18N = {
     test:'Verbindung testen',
     tip_title:'Unterstütze {name}', tip_amount:'Betrag', tip_other:'Andere', tip_ph:'Betrag in €, mindestens 1', tip_other_label:'Anderer Betrag in Euro',
     tip_btn:'{a} € spenden', tip_type:'Betrag eingeben', tip_min:'Der Mindestbetrag ist 1 €.', tip_direct:'Die Zahlung geht direkt an den Künstler.',
-    media_title:'Live', lang:'Sprache'
+    media_title:'Live', lang:'Sprache',
+    install:'Kabel installieren', install_why:'Installiere die App, damit deine Künstler nur einen Tipp entfernt sind.', install_ios:'Auf dem iPhone: Teilen antippen, dann „Zum Home-Bildschirm“.'
   },
   da: {
     st_checking:'Søger efter livesendingen…', st_live:'Live nu', st_off:'Ikke live lige nu', st_ended:'Livesendingen er slut',
@@ -442,7 +451,8 @@ const I18N = {
     test:'Test min forbindelse',
     tip_title:'Støt {name}', tip_amount:'Beløb', tip_other:'Andet', tip_ph:'Beløb i €, mindst 1', tip_other_label:'Andet beløb i euro',
     tip_btn:'Donér {a} €', tip_type:'Skriv et beløb', tip_min:'Minimum er 1 €.', tip_direct:'Betalingen går direkte til kunstneren.',
-    media_title:'Live', lang:'Sprog'
+    media_title:'Live', lang:'Sprog',
+    install:'Installér Kabel', install_why:'Installér appen, så dine kunstnere er et tryk væk.', install_ios:'På iPhone: Tryk på Del og derefter »Føj til hjemmeskærm«.'
   }
 };
 function pickLang(){
@@ -459,6 +469,25 @@ const t = (key, vars) => {
 };
 const fmtAmt = a => Number(a).toLocaleString(LOCALES[LANG] || 'es-ES', { maximumFractionDigits:2 });
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// ---------- App instalable ----------
+let installEvt = null;
+const IS_STANDALONE = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => dlog('No se pudo activar la app instalable: ' + e.message));
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; paintInstall(); });
+window.addEventListener('appinstalled', () => { installEvt = null; paintInstall(); });
+// Rellena el hueco #install-slot de la pantalla actual. tr = función de traducción (o textos en español).
+function paintInstall(){
+  const slot = document.getElementById('install-slot'); if (!slot) return;
+  const tr = slot.dataset.i18n ? t : (k => I18N.es[k]);
+  if (IS_STANDALONE()){ slot.innerHTML = ''; return; }
+  if (installEvt){
+    slot.innerHTML = `<button class="btn ghost" id="install-btn" type="button">⬇ ${esc(tr('install'))}</button><small style="color:var(--dim);display:block;margin-top:6px;text-align:center">${esc(tr('install_why'))}</small>`;
+    $('#install-btn').onclick = async () => { const ev = installEvt; installEvt = null; try { await ev.prompt(); await ev.userChoice; } catch(e){} paintInstall(); };
+  } else if (IS_IOS){
+    slot.innerHTML = `<small style="color:var(--dim);display:block;text-align:center">${esc(tr('install_why'))} ${esc(tr('install_ios'))}</small>`;
+  } else slot.innerHTML = '';
+}
 
 // ---------- Perfil dentro del enlace del QR ----------
 // El QR lleva nombre, descripción y enlaces del artista: el oyente los ve aunque la conexión de audio falle.
@@ -594,9 +623,11 @@ const Home = {
           </a>`).join('')}</div>`
         : `<p class="empty">¿Vienes a escuchar? Escanea el QR del artista con la cámara del móvil. Si lo guardas, aparecerá aquí.</p>`}
       </section>
+      <div id="install-slot"></div>
       <p class="foot">Prototipo ${VERSION}. No guardamos música, sesiones ni datos de oyentes. <a href="../">Qué es Kabel</a> · <a href="#test">Probar mi conexión</a></p>
     </div>`;
     if (list.length) this.probe(list);
+    paintInstall();
   },
   // Comprueba quién está en directo intentando saludar a cada artista guardado.
   async probe(list){
@@ -1388,6 +1419,7 @@ const Listener = {
         <button class="btn ghost" id="l-save" type="button">${esc(isSaved(this.code) ? t('saved') : t('save'))}</button>
         <button class="btn ghost" id="l-share" type="button">${esc(t(this.shareMsg || 'share'))}</button>
       </div>
+      <div id="install-slot" data-i18n="1"></div>
       <label class="switch"><input type="checkbox" id="l-awake" ${load(LS.awake, true) ? 'checked' : ''}><span>${esc(t('awake'))}${IS_IOS ? ' ' + esc(t('ios_lock')) : ''}</span></label>
       ${(st === 'neterror' || st === 'slow') ? `<a class="btn ghost" href="${esc(testURL)}">${esc(t('test'))}</a>` : ''}
       ${DEBUG ? `<details id="l-tech" ${this.techOpen ? 'open' : ''}><summary>Datos técnicos del piloto</summary>
@@ -1409,6 +1441,7 @@ const Listener = {
     $('#l-awake').onchange = e => { store(LS.awake, e.target.checked); if (this.playing) keepAwake(e.target.checked); };
     $('#l-lang').onchange = e => { LANG = e.target.value; store(LS.lang, LANG); document.documentElement.lang = LANG; this.media && this.playing && this.media(); this.render(); };
     if ($('#l-tech')) $('#l-tech').ontoggle = e => { this.techOpen = e.target.open; };
+    paintInstall();
   }
 };
 
