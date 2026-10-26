@@ -1,0 +1,9 @@
+{
+  // Servidor de Kabel en Cloudflare Workers.
+  // El nombre debe coincidir con el del Worker creado en el panel: kabel-api
+  "name": "kabel-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true }
+  // Secretos (se añaden en el panel, nunca aquí): TURN_KEY_ID y TURN_KEY_API_TOKEN
+}

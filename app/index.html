@@ -197,7 +197,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.7';
+const VERSION = 'v2.8';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -208,6 +208,26 @@ const ICE_SERVERS = [
   { urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'], username:'peerjs', credential:'peerjsp' }
 ];
 const PEER_OPTS = { config:{ iceServers: ICE_SERVERS, sdpSemantics:'unified-plan' } };
+// Servidor propio de Kabel en Cloudflare (relé de audio). Vacío = solo el relé gratuito.
+const API_BASE = '';
+let iceAt = 0, icePending = null;
+// Pide al servidor de Kabel credenciales del relé de Cloudflare. Si falla o tarda, sigue con el gratuito.
+function loadIce(){
+  if (!API_BASE) return Promise.resolve(false);
+  if (iceAt && Date.now() - iceAt < 3 * 3600 * 1000) return Promise.resolve(true);
+  if (icePending) return icePending;
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 4000);
+  icePending = fetch(API_BASE + '/turn', { cache:'no-store', signal:ctl.signal })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.iceServers || !d.iceServers.length) throw new Error(d.error || 'sin servidores');
+      PEER_OPTS.config.iceServers = d.iceServers.concat(ICE_SERVERS);
+      iceAt = Date.now(); dlog('Relé propio de Kabel (Cloudflare) listo ✓'); return true;
+    })
+    .catch(e => { dlog('Relé propio no disponible (' + (e.name === 'AbortError' ? 'tardó demasiado' : e.message) + '): uso el gratuito'); return false; })
+    .finally(() => { clearTimeout(tm); icePending = null; });
+  return icePending;
+}
 const CONNECT_TIMEOUT = 25000;
 
 // Registro de diagnóstico: qué pasó y cuándo, para poder localizar dónde se corta la cadena.
@@ -928,7 +948,7 @@ const Console = {
     this.ensureCtx();
     if (this.fileEl) this.fileEl.play().catch(() => {});
     this.state = 'wait'; this.paintLive();
-    try { await need('peer'); } catch(e){ this.state = ''; this.paintLive(); this.banner('No se pudo cargar el sistema de conexión. Revisa internet y vuelve a pulsar.'); return; }
+    try { await need('peer'); await loadIce(); } catch(e){ this.state = ''; this.paintLive(); this.banner('No se pudo cargar el sistema de conexión. Revisa internet y vuelve a pulsar.'); return; }
     dlog('Artista: conectando al servidor como ' + peerIdFor(a.code));
     const peer = new Peer(peerIdFor(a.code), Object.assign({ debug:1 }, PEER_OPTS));
     this.peer = peer;
@@ -1062,7 +1082,7 @@ const Listener = {
     document.body.appendChild(this.audio);
     if (load(LS.awake, null) === null) store(LS.awake, true);
     this.render();
-    need('peer').then(() => this.initPeer()).catch(() => { this.reason = 'no se pudo descargar PeerJS'; dlog('Oyente: no se pudo descargar PeerJS (unpkg ni jsDelivr)'); this.set('neterror'); });
+    need('peer').then(() => loadIce()).then(() => this.initPeer()).catch(() => { this.reason = 'no se pudo descargar PeerJS'; dlog('Oyente: no se pudo descargar PeerJS (unpkg ni jsDelivr)'); this.set('neterror'); });
     window.addEventListener('online', () => this.tryConnect());
     // Al volver a la página (pantalla desbloqueada, vuelta desde otra app): retomar el audio si se estaba escuchando.
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.resume(); });
@@ -1448,11 +1468,19 @@ const SelfTest = {
       ws.onerror = () => reject(new Error('no se pudo abrir el canal')); ws.onclose = ev => reject(new Error('el servidor cerró el canal (' + ev.code + ')'));
     }), 10000);
     const e = await this.step('Red para audio: servidor STUN', this.candidate([{ urls:'stun:stun.l.google.com:19302' }], 'all', 'srflx', 8000), 8500);
-    const f = await this.step('Red para audio: servidor relé (TURN)', this.candidate(ICE_SERVERS.filter(x => x.username), 'relay', 'relay', 10000), 10500);
+    const f = await this.step('Red para audio: relé gratuito (TURN)', this.candidate(ICE_SERVERS.filter(x => x.username), 'relay', 'relay', 10000), 10500);
+    let g = false;
+    if (API_BASE){
+      g = await this.step('Red para audio: relé propio de Kabel (Cloudflare)', async () => {
+        const r = await fetch(API_BASE + '/turn', { cache:'no-store' }); const d = await r.json();
+        if (!d.iceServers) throw new Error(d.error || 'el servidor respondió ' + r.status);
+        return await this.candidate(d.iceServers.filter(x => x.username), 'relay', 'relay', 10000)();
+      }, 12000);
+    }
     const v = $('#t-verdict'); let msg, cls;
     if (!a && !b){ msg = 'Este dispositivo no puede descargar PeerJS. Revisa que no haya bloqueador de contenido o modo ahorro de datos.'; cls = 'ko'; }
     else if (!c || !d){ msg = 'Este dispositivo no llega al servidor gratuito que conecta a artista y oyente. Es el servidor público o tu red, no la app. Solución: usar un servidor de conexión propio.'; cls = 'ko'; }
-    else if (!e && !f){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
+    else if (!e && !f && !g){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
     else if (!e){ msg = 'Esta red no permite la conexión directa, pero el relé funciona: debería conectar, algo más lento.'; cls = 'ok'; }
     else { msg = 'Todo correcto desde este dispositivo. Si sigue sin sonar, copia los resultados y el diagnóstico de la consola y envíamelos.'; cls = 'ok'; }
     v.className = 'verdict ' + cls; v.textContent = msg; v.hidden = false;
