@@ -203,17 +203,17 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.11';
+const VERSION = 'v2.12';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
 const ICE_SERVERS = [
   { urls:'stun:stun.l.google.com:19302' },
   { urls:'stun:stun1.l.google.com:19302' },
-  { urls:'stun:global.stun.twilio.com:3478' },
-  { urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'], username:'peerjs', credential:'peerjsp' }
+  { urls:'stun:global.stun.twilio.com:3478' }
+  // Los relés gratuitos de PeerJS (eu-0/us-0.turn.peerjs.com) ya no existen: se quitaron en v2.12.
 ];
-const PEER_OPTS = { config:{ iceServers: ICE_SERVERS, sdpSemantics:'unified-plan' } };
+const PEER_OPTS = { config:{ iceServers: [...ICE_SERVERS], sdpSemantics:'unified-plan' } };
 // Servidor propio de Kabel en Cloudflare (relé de audio). Vacío = solo el relé gratuito.
 const API_BASE = '';
 let iceAt = 0, icePending = null;
@@ -244,7 +244,7 @@ function loadIce(){
     .then(r => r.json())
     .then(d => {
       if (!d.iceServers || !d.iceServers.length) throw new Error(d.error || 'sin servidores');
-      PEER_OPTS.config.iceServers = d.iceServers.concat(ICE_SERVERS);
+      PEER_OPTS.config.iceServers = d.iceServers.concat(PEER_OPTS.config.iceServers.filter(x => !d.iceServers.includes(x)));
       iceAt = Date.now(); dlog('Relé propio de Kabel (Cloudflare) listo ✓'); return true;
     })
     .catch(e => { dlog('Relé propio no disponible (' + (e.name === 'AbortError' ? 'tardó demasiado' : e.message) + '): uso el gratuito'); return false; })
@@ -356,7 +356,13 @@ function cleanProfile(p, code){
     ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), sp: safeURL(p.sp || ''), web: safeURL(p.web || ''), tip: safeURL(p.tip || '')
   };
 }
-const baseURL = () => location.href.split('#')[0].split('?')[0];
+const PUBLIC_APP = 'https://yerayhalero.github.io/kabel/app/';
+// Los enlaces y el QR apuntan siempre a la dirección pública si la consola se abrió desde un archivo,
+// una IP o sin https: un móvil de fuera no podría abrir esa dirección.
+const baseURL = () => {
+  const h = location.hostname, local = location.protocol === 'file:' || /^(\d{1,3}\.){3}\d{1,3}$/.test(h) || h.endsWith('.local') || (location.protocol !== 'https:' && h !== 'localhost');
+  return local ? PUBLIC_APP : location.href.split('#')[0].split('?')[0];
+};
 const listenURL = (code, prof) => baseURL() + '?a=' + encodeURIComponent(code) + (prof && prof.name ? '&p=' + packProfile(prof) : '');
 
 // ---------- Idiomas de la pantalla del oyente ----------
@@ -1500,9 +1506,15 @@ const SelfTest = {
       const pc = new RTCPeerConnection({ iceServers: servers, iceTransportPolicy: policy });
       const done = (fn, v) => { try { pc.close(); } catch(e){} fn(v); };
       pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate.includes(' typ ' + want)) done(resolve, 'candidato ' + want + ' recibido'); };
-      pc.onicecandidateerror = e => { if (want === 'relay' && e.errorCode && e.errorCode !== 701) done(reject, new Error('el relé respondió con error ' + e.errorCode)); };
+      const errs = [];
+      pc.onicecandidateerror = e => {
+        if (want !== 'relay' || !e.errorCode) return;
+        const info = e.errorCode + (e.errorText ? ' ' + e.errorText : '') + (e.url ? ' en ' + e.url : '');
+        if (e.errorCode === 701) { errs.push(info); return; } // 701 = ese servidor no responde; se informa al final
+        done(reject, new Error('el relé respondió con error ' + info));
+      };
       pc.createDataChannel('t'); pc.createOffer().then(o => pc.setLocalDescription(o)).catch(err => done(reject, err));
-      setTimeout(() => done(reject, new Error('no se obtuvo candidato ' + want)), ms - 500);
+      setTimeout(() => done(reject, new Error(errs.length ? 'el relé no responde (' + errs.slice(0, 2).join(' · ') + ')' : 'no se obtuvo candidato ' + want)), ms - 500);
     });
   },
   async run(){
@@ -1518,7 +1530,7 @@ const SelfTest = {
       ws.onerror = () => reject(new Error('no se pudo abrir el canal')); ws.onclose = ev => reject(new Error('el servidor cerró el canal (' + ev.code + ')'));
     }), 10000);
     const e = await this.step('Red para audio: servidor STUN', this.candidate([{ urls:'stun:stun.l.google.com:19302' }], 'all', 'srflx', 8000), 8500);
-    const f = await this.step('Red para audio: relé gratuito (TURN)', this.candidate(ICE_SERVERS.filter(x => x.username), 'relay', 'relay', 10000), 10500);
+    const f = false;
     let g = false;
     await addOpenRelay();
     const orl = PEER_OPTS.config.iceServers.filter(x => x.username && String([].concat(x.urls)[0]).includes('openrelay'));
