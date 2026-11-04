@@ -203,7 +203,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.10';
+const VERSION = 'v2.11';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -372,7 +372,7 @@ const I18N = {
     sub_ended:'Gracias por escuchar. Esta página se activará sola en su próximo directo.',
     sub_full:'Ahora mismo hay 25 personas escuchando, el máximo del piloto. Te conectamos solo en cuanto quede un hueco.',
     sub_neterror:'No se llega al servidor de conexión. Seguimos intentándolo.',
-    sub_slow:'No se consigue conectar. Puede que el artista no esté en directo o que tu red tarde. Seguimos intentándolo.',
+    sub_slow:'No se consigue conectar. Puede que el artista no esté en directo o que tu red bloquee el audio. Si tienes una VPN, desactívala, o conéctate a la misma wifi que el artista. Seguimos intentándolo.',
     sub_reconnect:'Se ha cortado la conexión. Volverá a sonar sola en cuanto se recupere.',
     sub_playing:'Estás escuchando en directo. Puedes alejarte: el sonido llega por internet.',
     sub_tap:'Toca para activar el sonido.', connecting:'Conectando…',
@@ -399,7 +399,7 @@ const I18N = {
     sub_ended:'Thanks for listening. This page will start by itself at their next live set.',
     sub_full:'25 people are listening right now, the pilot maximum. We’ll connect you automatically as soon as a spot opens.',
     sub_neterror:'Can’t reach the connection server. We keep trying.',
-    sub_slow:'Can’t connect. The artist may not be live, or your network is slow. We keep trying.',
+    sub_slow:'Can’t connect. The artist may not be live, or your network may be blocking the audio. If you use a VPN, turn it off, or join the same wifi as the artist. We keep trying.',
     sub_reconnect:'The connection dropped. The sound will come back by itself once it recovers.',
     sub_playing:'You’re listening live. You can walk away: the sound comes over the internet.',
     sub_tap:'Tap to turn on the sound.', connecting:'Connecting…',
@@ -426,7 +426,7 @@ const I18N = {
     sub_ended:'Danke fürs Zuhören. Diese Seite startet beim nächsten Live-Set von selbst.',
     sub_full:'Gerade hören 25 Personen zu, das Maximum im Pilotbetrieb. Sobald ein Platz frei wird, verbinden wir dich automatisch.',
     sub_neterror:'Der Verbindungsserver ist nicht erreichbar. Wir versuchen es weiter.',
-    sub_slow:'Keine Verbindung möglich. Vielleicht ist der Künstler nicht live oder dein Netz ist langsam. Wir versuchen es weiter.',
+    sub_slow:'Keine Verbindung möglich. Vielleicht ist der Künstler nicht live oder dein Netz blockiert den Ton. Wenn du ein VPN nutzt, schalte es aus, oder verbinde dich mit demselben WLAN wie der Künstler. Wir versuchen es weiter.',
     sub_reconnect:'Die Verbindung wurde unterbrochen. Der Ton kommt von selbst zurück, sobald sie wieder steht.',
     sub_playing:'Du hörst live zu. Du kannst weggehen: Der Ton kommt über das Internet.',
     sub_tap:'Tippe, um den Ton einzuschalten.', connecting:'Verbinde…',
@@ -453,7 +453,7 @@ const I18N = {
     sub_ended:'Tak fordi du lyttede. Siden starter af sig selv ved næste livesending.',
     sub_full:'Lige nu lytter 25 personer, pilotens maksimum. Vi forbinder dig automatisk, så snart der er plads.',
     sub_neterror:'Forbindelsesserveren kan ikke nås. Vi bliver ved med at prøve.',
-    sub_slow:'Kan ikke forbinde. Kunstneren er måske ikke live, eller dit netværk er langsomt. Vi bliver ved med at prøve.',
+    sub_slow:'Kan ikke forbinde. Kunstneren er måske ikke live, eller dit netværk blokerer lyden. Hvis du bruger en VPN, så slå den fra, eller brug samme wifi som kunstneren. Vi bliver ved med at prøve.',
     sub_reconnect:'Forbindelsen blev afbrudt. Lyden kommer af sig selv tilbage, når den er genoprettet.',
     sub_playing:'Du lytter live. Du kan godt gå væk: Lyden kommer via internettet.',
     sub_tap:'Tryk for at tænde for lyden.', connecting:'Forbinder…',
