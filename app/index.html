@@ -203,7 +203,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.12';
+const VERSION = 'v2.13';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -213,7 +213,14 @@ const ICE_SERVERS = [
   { urls:'stun:global.stun.twilio.com:3478' }
   // Los relés gratuitos de PeerJS (eu-0/us-0.turn.peerjs.com) ya no existen: se quitaron en v2.12.
 ];
-const PEER_OPTS = { config:{ iceServers: [...ICE_SERVERS], sdpSemantics:'unified-plan' } };
+// Relé TURN de Metered (app "kabel", plan gratuito 50 GB/mes). Credencial estática: al ir en código público,
+// si se abusara de ella se borra en el panel de Metered y se crea otra. El relé definitivo será el de Cloudflare.
+const METERED = [
+  { urls:'stun:stun.relay.metered.ca:80' },
+  { urls:['turn:global.relay.metered.ca:80', 'turn:global.relay.metered.ca:80?transport=tcp', 'turn:global.relay.metered.ca:443', 'turns:global.relay.metered.ca:443?transport=tcp'],
+    username:'b6f15a5e6409394725d273a0', credential:'F56eiUXBsr8wXmzS' }
+];
+const PEER_OPTS = { config:{ iceServers: [...ICE_SERVERS, ...METERED], sdpSemantics:'unified-plan' } };
 // Servidor propio de Kabel en Cloudflare (relé de audio). Vacío = solo el relé gratuito.
 const API_BASE = '';
 let iceAt = 0, icePending = null;
@@ -1534,6 +1541,7 @@ const SelfTest = {
     let g = false;
     await addOpenRelay();
     const orl = PEER_OPTS.config.iceServers.filter(x => x.username && String([].concat(x.urls)[0]).includes('openrelay'));
+    const m = await this.step('Red para audio: relé Metered de Kabel', this.candidate(METERED.filter(x => x.username), 'relay', 'relay', 10000), 10500);
     const o = orl.length ? await this.step('Red para audio: relé de respaldo (Open Relay)', this.candidate(orl, 'relay', 'relay', 10000), 10500) : false;
     if (API_BASE){
       g = await this.step('Red para audio: relé propio de Kabel (Cloudflare)', async () => {
@@ -1545,9 +1553,9 @@ const SelfTest = {
     const v = $('#t-verdict'); let msg, cls;
     if (!a && !b){ msg = 'Este dispositivo no puede descargar PeerJS. Revisa que no haya bloqueador de contenido o modo ahorro de datos.'; cls = 'ko'; }
     else if (!c || !d){ msg = 'Este dispositivo no llega al servidor gratuito que conecta a artista y oyente. Es el servidor público o tu red, no la app. Solución: usar un servidor de conexión propio.'; cls = 'ko'; }
-    else if (!e && !f && !g && !o){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
+    else if (!e && !f && !g && !o && !m){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
     else if (!e){ msg = 'Esta red no permite la conexión directa, pero el relé funciona: debería conectar, algo más lento.'; cls = 'ok'; }
-    else if (!f && !g && !o){ msg = 'La conexión directa funciona, pero ningún relé responde. Con datos móviles o con VPN puede no conectar: desactiva la VPN o usa la misma wifi que el artista.'; cls = 'ko'; }
+    else if (!f && !g && !o && !m){ msg = 'La conexión directa funciona, pero ningún relé responde. Con datos móviles o con VPN puede no conectar: desactiva la VPN o usa la misma wifi que el artista.'; cls = 'ko'; }
     else { msg = 'Todo correcto desde este dispositivo. Si sigue sin sonar, copia los resultados y el diagnóstico de la consola y envíamelos.'; cls = 'ok'; }
     v.className = 'verdict ' + cls; v.textContent = msg; v.hidden = false;
     btn.disabled = false; btn.textContent = 'Repetir prueba'; $('#t-copy').hidden = false; $('#t-copy').textContent = 'Copiar resultados';
