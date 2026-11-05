@@ -203,7 +203,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.13';
+const VERSION = 'v2.14';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -225,25 +225,8 @@ const PEER_OPTS = { config:{ iceServers: [...ICE_SERVERS, ...METERED], sdpSemant
 const API_BASE = '';
 let iceAt = 0, icePending = null;
 // Pide al servidor de Kabel credenciales del relé de Cloudflare. Si falla o tarda, sigue con el gratuito.
-// Segundo relé gratuito de respaldo (Open Relay de Metered, 20 GB/mes). Usa credenciales temporales
-// calculadas aquí con su clave pública compartida (método estándar "TURN REST").
-const OPENRELAY = { host:'staticauth.openrelay.metered.ca', secret:'openrelayprojectsecret' };
-let openRelayDone = false;
-async function addOpenRelay(){
-  if (openRelayDone) return;
-  try {
-    const user = Math.floor(Date.now() / 1000 + 12 * 3600) + ':kabel';
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(OPENRELAY.secret), { name:'HMAC', hash:'SHA-1' }, false, ['sign']);
-    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(user));
-    const credential = btoa(String.fromCharCode(...new Uint8Array(sig)));
-    const h = OPENRELAY.host;
-    PEER_OPTS.config.iceServers.push({ urls:['turn:' + h + ':80', 'turn:' + h + ':80?transport=tcp', 'turn:' + h + ':443', 'turns:' + h + ':443?transport=tcp'], username:user, credential });
-    openRelayDone = true; dlog('Relé de respaldo (Open Relay) añadido');
-  } catch(e){ dlog('No se pudo preparar el relé de respaldo: ' + e.message); }
-}
 function loadIce(){
-  const extra = addOpenRelay();
-  if (!API_BASE) return extra.then(() => false);
+  if (!API_BASE) return Promise.resolve(false);
   if (iceAt && Date.now() - iceAt < 3 * 3600 * 1000) return Promise.resolve(true);
   if (icePending) return icePending;
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 4000);
@@ -1539,10 +1522,7 @@ const SelfTest = {
     const e = await this.step('Red para audio: servidor STUN', this.candidate([{ urls:'stun:stun.l.google.com:19302' }], 'all', 'srflx', 8000), 8500);
     const f = false;
     let g = false;
-    await addOpenRelay();
-    const orl = PEER_OPTS.config.iceServers.filter(x => x.username && String([].concat(x.urls)[0]).includes('openrelay'));
     const m = await this.step('Red para audio: relé Metered de Kabel', this.candidate(METERED.filter(x => x.username), 'relay', 'relay', 10000), 10500);
-    const o = orl.length ? await this.step('Red para audio: relé de respaldo (Open Relay)', this.candidate(orl, 'relay', 'relay', 10000), 10500) : false;
     if (API_BASE){
       g = await this.step('Red para audio: relé propio de Kabel (Cloudflare)', async () => {
         const r = await fetch(API_BASE + '/turn', { cache:'no-store' }); const d = await r.json();
@@ -1553,9 +1533,9 @@ const SelfTest = {
     const v = $('#t-verdict'); let msg, cls;
     if (!a && !b){ msg = 'Este dispositivo no puede descargar PeerJS. Revisa que no haya bloqueador de contenido o modo ahorro de datos.'; cls = 'ko'; }
     else if (!c || !d){ msg = 'Este dispositivo no llega al servidor gratuito que conecta a artista y oyente. Es el servidor público o tu red, no la app. Solución: usar un servidor de conexión propio.'; cls = 'ko'; }
-    else if (!e && !f && !g && !o && !m){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
+    else if (!e && !f && !g && !m){ msg = 'Tu red bloquea el audio directo (WebRTC) y no hay relé disponible. Prueba con otra red u otro dispositivo.'; cls = 'ko'; }
     else if (!e){ msg = 'Esta red no permite la conexión directa, pero el relé funciona: debería conectar, algo más lento.'; cls = 'ok'; }
-    else if (!f && !g && !o && !m){ msg = 'La conexión directa funciona, pero ningún relé responde. Con datos móviles o con VPN puede no conectar: desactiva la VPN o usa la misma wifi que el artista.'; cls = 'ko'; }
+    else if (!f && !g && !m){ msg = 'La conexión directa funciona, pero ningún relé responde. Con datos móviles o con VPN puede no conectar: desactiva la VPN o usa la misma wifi que el artista.'; cls = 'ko'; }
     else { msg = 'Todo correcto desde este dispositivo. Si sigue sin sonar, copia los resultados y el diagnóstico de la consola y envíamelos.'; cls = 'ok'; }
     v.className = 'verdict ' + cls; v.textContent = msg; v.hidden = false;
     btn.disabled = false; btn.textContent = 'Repetir prueba'; $('#t-copy').hidden = false; $('#t-copy').textContent = 'Copiar resultados';
