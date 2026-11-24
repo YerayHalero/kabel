@@ -114,6 +114,17 @@
 
   /* listener */
   .artist{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding-top:8px}
+  .hero{position:relative;width:100%;margin-bottom:46px}
+  .hero .cover{display:block;width:100%;aspect-ratio:3/1;object-fit:cover;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+  .hero .cover.empty{background:linear-gradient(135deg,#1c2014,#070806)}
+  .hero .ring{position:absolute;left:50%;bottom:-46px;transform:translateX(-50%);border-radius:50%;border:4px solid var(--bg);background:var(--bg)}
+  .av{display:block;border-radius:50%;object-fit:cover;background:var(--panel)}
+  .av.xl{width:112px;height:112px} .av.lg{width:96px;height:96px} .av.sm{width:44px;height:44px;flex:none}
+  .hero .mono.xl{width:96px;height:96px;font-size:40px}
+  .info{font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 14px;max-width:34ch;overflow-wrap:anywhere}
+  .info::before{content:'◷ ';color:var(--lime)}
+  .pics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pics .btn{min-height:44px;font-size:14px;padding:10px}
   .artist h1{font-size:30px;font-stretch:118%;line-height:1.05;overflow-wrap:anywhere}
   .bio{color:var(--dim);font-size:16px;max-width:32ch}
   .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
@@ -203,7 +214,7 @@
    ========================================================================= */
 
 const MAX_LISTENERS = 25;
-const VERSION = 'v2.14';
+const VERSION = 'v2.15';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 // Servidores para atravesar redes móviles y cortafuegos. Para redes difíciles se puede añadir
 // aquí un servidor TURN propio (por ejemplo Cloudflare o Metered) con su usuario y clave.
@@ -288,7 +299,7 @@ const app = document.getElementById('app');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } };
-const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } };
 
 // ---------- utilidades ----------
 function loadScript(urls){
@@ -343,8 +354,34 @@ function cleanProfile(p, code){
   p = p || {};
   return {
     code, name: String(p.name || code.split('-')[0]).slice(0,32), bio: String(p.bio || '').slice(0,90),
-    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), sp: safeURL(p.sp || ''), web: safeURL(p.web || ''), tip: safeURL(p.tip || '')
+    ig: safeURL(p.ig || ''), yt: safeURL(p.yt || ''), sp: safeURL(p.sp || ''), web: safeURL(p.web || ''), tip: safeURL(p.tip || ''),
+    info: String(p.info || '').slice(0, 80), avatar: safeImg(p.avatar, 70000), cover: safeImg(p.cover, 180000)
   };
+}
+// Solo se aceptan imágenes incrustadas (data:) de tipo JPEG/PNG/WebP y de tamaño limitado: nunca enlaces externos.
+function safeImg(v, max){ v = String(v || ''); return (v.length <= max && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v)) ? v : ''; }
+// Recorta la foto al centro con la proporción pedida, la reduce y la comprime en el propio dispositivo.
+function shrinkImage(file, w, h, q){
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('no es una imagen'));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const r = w / h, iw = img.naturalWidth, ih = img.naturalHeight;
+      let sw = iw, sh = iw / r; if (sh > ih){ sh = ih; sw = ih * r; }
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+      g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
+      URL.revokeObjectURL(url); resolve(cv.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('no se pudo leer la imagen')); };
+    img.src = url;
+  });
+}
+// Cabecera del artista: portada rectangular + foto circular, o solo la foto / la inicial si no hay portada.
+function artistHead(p){
+  const pic = cls => p.avatar ? `<img class="av ${cls}" src="${p.avatar}" alt="">` : `<span class="mono xl">${esc(initial(p.name))}</span>`;
+  if (p.cover) return `<div class="hero"><img class="cover" src="${p.cover}" alt=""><span class="ring">${pic('lg')}</span></div>`;
+  return pic('xl');
 }
 const PUBLIC_APP = 'https://yerayhalero.github.io/kabel/app/';
 // Los enlaces y el QR apuntan siempre a la dirección pública si la consola se abrió desde un archivo,
@@ -505,9 +542,11 @@ function paintInstall(){
 // ---------- Perfil dentro del enlace del QR ----------
 // El QR lleva nombre, descripción y enlaces del artista: el oyente los ve aunque la conexión de audio falle.
 const PACK_KEYS = { ig:'i', yt:'y', sp:'s', web:'w', tip:'t' };
+// La info corta viaja en el enlace (clave f); las fotos no caben en un QR y llegan al conectar.
 function packProfile(a){
   const o = { n: a.name };
   if (a.bio) o.b = a.bio;
+  if (a.info) o.f = a.info;
   for (const k in PACK_KEYS) if (a[k]) o[PACK_KEYS[k]] = String(a[k]).replace(/^https:\/\//, '');
   const b = btoa(unescape(encodeURIComponent(JSON.stringify(o))));
   return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -516,7 +555,7 @@ function unpackProfile(s, code){
   try {
     const b = s.replace(/-/g, '+').replace(/_/g, '/');
     const o = JSON.parse(decodeURIComponent(escape(atob(b + '==='.slice((b.length + 3) % 4)))));
-    const p = { name:o.n, bio:o.b };
+    const p = { name:o.n, bio:o.b, info:o.f };
     for (const k in PACK_KEYS) if (o[PACK_KEYS[k]]) p[k] = 'https://' + String(o[PACK_KEYS[k]]).replace(/^https?:\/\//, '');
     return cleanProfile(p, code);
   } catch(e){ return null; }
@@ -552,7 +591,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 const saved = () => load(LS.saved, []);
 const isSaved = code => saved().some(s => s.code === code);
-function upsertSaved(p){ const list = saved().filter(s => s.code !== p.code); list.unshift(p); store(LS.saved, list); }
+function upsertSaved(p){ p = Object.assign({}, p); delete p.cover; const list = saved().filter(s => s.code !== p.code); list.unshift(p); store(LS.saved, list); }
 function removeSaved(code){ store(LS.saved, saved().filter(s => s.code !== code)); }
 
 // Emojis que suben por la pantalla: efímeros, no se guardan en ningún sitio.
@@ -631,7 +670,7 @@ const Home = {
         <h2>Tus artistas</h2>
         ${list.length ? `<div class="saved-list">${list.map(s => `
           <a class="saved-row" href="?a=${encodeURIComponent(s.code)}">
-            <span class="mono sm">${esc(initial(s.name))}</span>
+            ${safeImg(s.avatar, 70000) ? `<img class="av sm" src="${s.avatar}" alt="">` : `<span class="mono sm">${esc(initial(s.name))}</span>`}
             <span><b>${esc(s.name)}</b><small data-st="${esc(s.code)}">Comprobando…</small></span>
           </a>`).join('')}</div>`
         : `<p class="empty">¿Vienes a escuchar? Escanea el QR del artista con la cámara del móvil. Si lo guardas, aparecerá aquí.</p>`}
@@ -667,9 +706,11 @@ const Home = {
 // PERFIL DEL ARTISTA (registro estilo Find Y Crew: sin email ni contraseña)
 // =========================================================================
 const Profile = {
+  avatar:'', cover:'',
   render(){
     const a = load(LS.artist, null) || {};
     const editing = !!a.code;
+    this.avatar = safeImg(a.avatar, 70000); this.cover = safeImg(a.cover, 180000);
     app.innerHTML = `
     <div class="wrap">
       <a class="brand" href="./">KABEL</a>
@@ -677,11 +718,24 @@ const Profile = {
         <h1 style="font-size:28px;font-stretch:112%">${editing ? 'Editar perfil' : 'Crea tu perfil de artista'}</h1>
         <p style="color:var(--dim);margin-top:8px">Solo lo que ve tu público. Nada más.</p>
       </div>
+      <section class="artist" id="f-prev" aria-label="Así te verá tu público"></section>
+      <div class="field"><label>Imágenes (opcional)</label>
+        <div class="pics">
+          <button class="btn ghost" id="f-cover-b" type="button">Portada</button>
+          <button class="btn ghost" id="f-av-b" type="button">Foto de perfil</button>
+        </div>
+        <input type="file" id="f-cover" accept="image/*" hidden><input type="file" id="f-av" accept="image/*" hidden>
+        <small>Portada horizontal (se recorta a 3:1) y foto cuadrada (se ve redonda). Se reducen en tu móvil y solo se envían a quien te escucha.</small>
+        <button class="link" id="f-pics-x" type="button" style="align-self:flex-start;padding-left:0">Quitar imágenes</button>
+        <p class="err" id="f-pic-err" hidden></p></div>
       <div class="field"><label for="f-name">Nombre artístico</label>
         <input type="text" id="f-name" maxlength="32" autocomplete="off" value="${esc(a.name)}" placeholder="DJ Nova"></div>
       <div class="field"><label for="f-bio">Descripción breve</label>
         <textarea id="f-bio" maxlength="90" placeholder="Techno oscuro desde Copenhague">${esc(a.bio)}</textarea>
         <small id="f-count"></small></div>
+      <div class="field"><label for="f-info">Info corta (opcional)</label>
+        <input type="text" id="f-info" maxlength="80" autocomplete="off" value="${esc(a.info)}" placeholder="Vie y sáb 22–02 h · Próximas paradas: Berlín, Lisboa">
+        <small>Cuándo sueles tocar, tus próximas paradas… Se ve bajo tu nombre.</small></div>
       <div class="field"><label for="f-ig">Instagram (opcional)</label>
         <input type="text" id="f-ig" autocomplete="off" autocapitalize="off" value="${esc(a.ig)}" placeholder="@tuusuario"></div>
       <div class="field"><label for="f-yt">YouTube (opcional)</label>
@@ -701,15 +755,35 @@ const Profile = {
     </div>`;
     const bio = $('#f-bio'), cnt = $('#f-count');
     const upd = () => cnt.textContent = (90 - bio.value.length) + ' caracteres disponibles';
-    bio.oninput = upd; upd();
+    // Vista previa en vivo: exactamente la cabecera que verá el oyente.
+    const prev = () => {
+      const p = { name: $('#f-name').value.trim() || 'Tu nombre', bio: bio.value.trim(), info: $('#f-info').value.trim(), avatar: this.avatar, cover: this.cover };
+      $('#f-prev').innerHTML = artistHead(p) + `<h1>${esc(p.name)}</h1>${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}${p.info ? `<p class="info">${esc(p.info)}</p>` : ''}`;
+      $('#f-pics-x').hidden = !(this.avatar || this.cover);
+    };
+    bio.oninput = () => { upd(); prev(); }; upd();
+    $('#f-name').oninput = prev; $('#f-info').oninput = prev; prev();
+    const pick = (btn, inp, w, h, q, key) => {
+      $(btn).onclick = () => $(inp).click();
+      $(inp).onchange = async e => {
+        const f = e.target.files[0], er = $('#f-pic-err'); er.hidden = true; e.target.value = '';
+        if (!f) return;
+        try { this[key] = await shrinkImage(f, w, h, q); prev(); }
+        catch(err){ er.textContent = 'No se pudo usar esa imagen (' + err.message + '). Prueba con otra foto JPG o PNG.'; er.hidden = false; }
+      };
+    };
+    pick('#f-cover-b', '#f-cover', 960, 320, 0.72, 'cover');
+    pick('#f-av-b', '#f-av', 240, 240, 0.8, 'avatar');
+    $('#f-pics-x').onclick = () => { this.avatar = ''; this.cover = ''; prev(); };
     $('#f-save').onclick = () => {
       const name = $('#f-name').value.trim();
       if (!name){ const e = $('#f-err'); e.textContent = 'Escribe tu nombre artístico para continuar.'; e.hidden = false; $('#f-name').focus(); return; }
       const p = {
         code: a.code || genCode(name), name, bio: bio.value.trim(),
-        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), sp: normLink($('#f-sp').value, 'web'), web: normLink($('#f-web').value, 'web'), tip: normLink($('#f-tip').value, 'web')
+        ig: normLink($('#f-ig').value, 'ig'), yt: normLink($('#f-yt').value, 'yt'), sp: normLink($('#f-sp').value, 'web'), web: normLink($('#f-web').value, 'web'), tip: normLink($('#f-tip').value, 'web'),
+        info: $('#f-info').value.trim().slice(0, 80), avatar: this.avatar, cover: this.cover
       };
-      store(LS.artist, p);
+      if (!store(LS.artist, p)){ const e = $('#f-err'); e.textContent = 'No hay espacio para guardar las imágenes en este navegador. Prueba con fotos más pequeñas o quítalas.'; e.hidden = false; return; }
       location.hash = 'consola';
     };
     const rec = $('#f-rec');
@@ -740,11 +814,12 @@ const Console = {
   render(){
     const a = this.artist;
     if (!a){ location.hash = 'perfil'; return; }
-    const rec = btoa(unescape(encodeURIComponent(JSON.stringify(a))));
+    const recP = Object.assign({}, a); delete recP.avatar; delete recP.cover; // las fotos no caben en el código: se vuelven a subir
+    const rec = btoa(unescape(encodeURIComponent(JSON.stringify(recP))));
     app.innerHTML = `
     <div class="wrap">
       <header class="who">
-        <span class="mono sm">${esc(initial(a.name))}</span>
+        ${a.avatar ? `<img class="av sm" src="${a.avatar}" alt="">` : `<span class="mono sm">${esc(initial(a.name))}</span>`}
         <div class="who-t"><b>${esc(a.name)}</b><small>Tu código: ${esc(a.code)} · ${VERSION}</small></div>
         <button class="link" id="c-edit" type="button">Editar</button>
       </header>
@@ -797,7 +872,7 @@ const Console = {
       </div></details>
 
       <details><summary>Usar tu perfil en otro dispositivo</summary><div class="body">
-        <p>Copia este código de recuperación y pégalo en el otro dispositivo, en "Ya tengo perfil". Quien lo tenga puede emitir como tú: no lo compartas.</p>
+        <p>Copia este código de recuperación y pégalo en el otro dispositivo, en "Ya tengo perfil". Quien lo tenga puede emitir como tú: no lo compartas. Las fotos no van en el código: súbelas de nuevo allí.</p>
         <textarea readonly id="c-rec" style="font-size:12px;min-height:90px">${esc(rec)}</textarea>
         <button class="btn ghost" id="c-copy" type="button">Copiar código</button>
       </div></details>
@@ -1017,7 +1092,10 @@ const Console = {
 
   onConn(c){
     this.conns.set(c.peer, c); watchICE(c, 'Oyente ' + String(c.peer).slice(0, 4));
-    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, msg:this.msg, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, sp:a.sp, web:a.web, tip:a.tip } }); });
+    c.on('open', () => { dlog('Artista: conexión con oyente abierta ✓'); routeOf(c, 'Oyente ' + String(c.peer).slice(0, 4)); this.paintLive(); const a = this.artist; c.send({ t:'hello', since:this.t0, n:this.calls.size, now:this.nowPlaying, msg:this.msg, profile:{ name:a.name, bio:a.bio, ig:a.ig, yt:a.yt, sp:a.sp, web:a.web, tip:a.tip, info:a.info } });
+      // Las fotos van en un mensaje aparte (pesan más): el oyente ve el perfil al instante y las imágenes justo después.
+      if (a.avatar || a.cover) setTimeout(() => { try { if (c.open) c.send({ t:'img', avatar:a.avatar || '', cover:a.cover || '' }); } catch(e){} }, 150);
+    });
     c.on('data', d => {
       if (!d) return;
       if (d.t === 'listen'){ dlog('Artista: el oyente pulsa escuchar'); this.startCall(c); }
@@ -1208,7 +1286,8 @@ const Listener = {
     if (!d) return;
     if (d.t === 'hello'){
       const was = this.status;
-      this.profile = cleanProfile(d.profile, this.code);
+      const prev = this.profile || {};
+      this.profile = cleanProfile(Object.assign({ avatar:prev.avatar, cover:prev.cover }, d.profile), this.code);
       this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.msg = clip(d.msg, 80);
       if (isSaved(this.code)) upsertSaved(this.profile);
       if ((was === 'off' || was === 'ended') && navigator.vibrate) navigator.vibrate([120, 60, 120]);
@@ -1217,6 +1296,14 @@ const Listener = {
       if (this.want || this.keep){ dlog('Oyente: pidiendo el audio' + (this.keep && !this.want ? ' (reanudación automática)' : '')); this.ask(); }
     }
     if (d.t === 'state'){ this.n = Number(d.n) || 0; this.now = clip(d.now, 60); this.msg = clip(d.msg, 80); this.paintMeta(); }
+    if (d.t === 'img'){
+      const av = safeImg(d.avatar, 70000), cv = safeImg(d.cover, 180000);
+      if (av !== this.profile.avatar || cv !== this.profile.cover){
+        this.profile.avatar = av; this.profile.cover = cv;
+        if (isSaved(this.code)) upsertSaved(this.profile);
+        if (!this.playing) this.render(); else { const h = $('#l-head'); if (h) h.innerHTML = artistHead(this.profile); }
+      }
+    }
     if (d.t === 'react') floatEmoji(d.e);
     if (d.t === 'full'){
       this.want = false; this.connecting = false; this.set('full');
@@ -1412,9 +1499,10 @@ const Listener = {
           <select id="l-lang" aria-label="${esc(t('lang'))}">${Object.keys(LANGS).map(k => `<option value="${k}" ${k === LANG ? 'selected' : ''}>${LANGS[k]}</option>`).join('')}</select></label>
       </div>
       <section class="artist">
-        <span class="mono xl">${esc(initial(p.name))}</span>
+        <div id="l-head" style="width:100%;display:flex;justify-content:center">${artistHead(p)}</div>
         <h1>${esc(p.name)}</h1>
         ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}
+        ${p.info ? `<p class="info">${esc(p.info)}</p>` : ''}
         ${links.length ? `<div class="socials" style="grid-template-columns:repeat(${links.length === 4 ? 2 : links.length},1fr)">${links.map(l => `<a class="social" href="${esc(l[1])}" target="_blank" rel="noopener noreferrer">${l[0]} <span aria-hidden="true">↗</span></a>`).join('')}</div>` : ''}
       </section>
       ${p.tip ? this.tipHTML(p) : ''}
